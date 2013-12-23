@@ -10,7 +10,8 @@
 (deftest simple-test-output
   (let [test #(println "Hello from test")]
     (assert (= (with-out-str (run-test test))
-               (format "Hello from test%n%nTest %s OK.%n" (print-str test))))))
+               (format "Hello from test%n%n1 tests of 1 success%n" 
+                       (print-str test))))))
 
 (ns khazad-dum.test-ns
   (:require [khazad-dum.core :refer :all]))
@@ -27,7 +28,6 @@
   (assert (= (with-out-str (run-tests 'khazad-dum.test-ns))
              (format "Dummy 1%nDummy 2%n%n2 tests of 2 success%n"))))
 
-;move to map of vectors of tests by namespace
 ;?false, ?true form
 ;?= form
 ;(?lines= form & lines)
