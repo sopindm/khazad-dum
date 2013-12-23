@@ -18,12 +18,12 @@
     (swap! *tests* #(update-ns-tests % ns sym body))))
 
 (defn get-tests [ns]
-  (get @*tests* (find-ns ns)))
+  (get @*tests* ns))
 
 (defn get-test [name]
   (let [{sym :name ns :ns} (meta name)]
     (if-let [[[_ test]] (filter #(= (first %) sym) (get-tests ns))]
-      (test)
+      test
       (throw (java.lang.IllegalArgumentException. 
               (print-str "Wrong test name" name))))))
 
@@ -72,7 +72,7 @@
     (throw (java.lang.IllegalArgumentException. (format "Wrong test %s" name)))))
 
 (defn run-tests [ns]
-  (do-run-tests (get-tests ns)))
+  (do-run-tests (get-tests (find-ns ns))))
 
 ;;
 ;; Test predicates

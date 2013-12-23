@@ -13,6 +13,8 @@
                (format "Hello from test%n%n1 tests of 1 success%n" 
                        (print-str test))))))
 
+;running named test
+
 (ns khazad-dum.test-ns
   (:require [khazad-dum.core :refer :all]))
 
