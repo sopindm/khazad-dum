@@ -1,4 +1,5 @@
-(ns khazad-dum.core)
+(ns khazad-dum.core
+  (:use [clojure.string :only [join]]))
 
 ;;
 ;; Tests storing
@@ -60,19 +61,26 @@
            (report-failure (println-str name "died with" (.getMessage e)))
            false))))
 
-(defn- do-run-tests [tests]
+(defn- do-run-tests [tests ns]
   (let [results (doall (map (fn [[key val]] [key (do-run-test key val)]) tests))
         failed (remove (fn [[_ result]] (empty? result)) results)]
+    (doall (map #(doall (map println (second %))) failed))
     (println)
-    (println (count results) "tests of" (count results) "success")))
+    (doall (map #(println (if ns (symbol (name (ns-name ns)) (name (first %))) 
+                              (first %))
+                          "failed")
+                failed))
+    (println (- (count results) (count failed)) "tests of" 
+             (count results) "success")))
 
 (defn run-test [name]
   (if-let [form (if (var? name) (get-test name) name)]
-    (do-run-tests [[name form]])
+    (do-run-tests [[name form]] (if (var? name) (-> name meta :ns)))
     (throw (java.lang.IllegalArgumentException. (format "Wrong test %s" name)))))
 
-(defn run-tests [ns]
-  (do-run-tests (get-tests (find-ns ns))))
+(defn run-tests [ns-sym]
+  (let [ns (find-ns ns-sym)]
+    (do-run-tests (get-tests ns) ns)))
 
 ;;
 ;; Test predicates
@@ -82,12 +90,43 @@
   `(let [v# ~expr]
      (if (false? v#)
        (report-success)
-       (report-failure (format "%s is %s. Expected false." '~expr v#)))))
+       (report-failure (format "%s is %s. Expected false" '~expr v#)))))
+
+(defmacro ?true [expr]
+  `(let [v# ~expr]
+     (if (true? v#)
+       (report-success)
+       (report-failure (format "%s is %s. Expected true" '~expr v#)))))
 
 (defmacro ?= [val1 val2]
   `(let [v1# ~val1, v2# ~val2]
      (if (= v1# v2#)
        (report-success)
-       (report-failure (format "%s is %s.%nExpected %s that is %s"
+       (report-failure (format "%s is%n%s%nExpected %s that is%n%s"
                                '~val1 v1# '~val2 v2#)))))
+
+(defn- lines-to-string [lines]
+  (join (map println-str lines)))
+
+(defn- lines-diff [str1 str2]
+  (let [lines1 (clojure.string/split-lines str1)
+        lines2 (clojure.string/split-lines str2)
+        trim (fn [l1 l2] (count (take-while (fn [[f s]] (= f s)) 
+                                            (map vector l1 l2))))
+        begin (trim lines1 lines2)
+        end (trim (reverse (drop begin lines1)) 
+                  (reverse (drop begin lines2)))]
+    (str (if (pos? begin) (format "<<<...%s...>>>%n" begin) "")
+         (join (map println-str (drop-last end (drop begin lines1))))
+         (if (pos? end) (format "<<<...%s...>>>%n" end) ""))))
+
+(defmacro ?lines= [expr & lines]
+  `(let [v1# ~expr
+         v2# (#'lines-to-string (list ~@lines))]
+     (if (= v1# v2#)
+       (report-success)
+       (report-failure (format "%s is:%n%s%nExpected:%n%s" 
+                               '~expr 
+                               (#'lines-diff v1# v2#)
+                               (#'lines-diff v2# v1#))))))
 
