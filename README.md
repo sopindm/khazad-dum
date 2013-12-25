@@ -10,5 +10,5 @@ FIXME
 
 Copyright © 2013 sopindm@gmail.com
 
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+Distributed under the Apache License version 2.0
+
