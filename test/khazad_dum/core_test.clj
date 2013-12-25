@@ -49,8 +49,15 @@
                (format "false is false. Expected true%n%n%s failed%n0 tests of 1 success%n"
                        (print-str test2))))))
 
-;?false
-
+(deftest ?false-test
+  (letfn [(test1 [] (?false true))
+          (test2 [] (?false false))]
+    (?true (= (with-out-str (run-test test1))
+              (format "true is true. Expected false%n%n%s failed%n0 tests of 1 success%n"
+                      (print-str test1))))
+    (?true (= (with-out-str (run-test test2))
+              (format "%n1 tests of 1 success%n")))))
+    
 (deftest ?=-test
   (letfn [(test1 [] (?= 2 2))
           (test2 [] (?= (+ 2 2) 5))]
@@ -109,8 +116,51 @@
                      (println-str test4 "failed")
                      "0 tests of 1 success%n")))))
 
+(deftest dying-with-exception
+  (letfn [(test [] (throw (java.lang.Exception. "test")))]
+    (?lines= (with-out-str (run-test test))
+             (print-str test "died with java.lang.Exception: test")
+             ""
+             (print-str test "failed")
+             "0 tests of 1 success")))
+
+(defmacro ?test= [form & lines]
+  `(let [~'test (fn [] ~form)]
+     (?lines= (with-out-str (run-test ~'test))
+              ~@lines)))
+
+(deftest ?throws-test
+  (?test= (?throws (throw (RuntimeException. "something"))
+                   RuntimeException)
+          ""
+          "1 tests of 1 success")
+  (?test= (?throws "everything fine" Exception)
+          "\"everything fine\" failed to die"
+          ""
+          (print-str test "failed")
+          "0 tests of 1 success")
+  (?test= (?throws (throw (RuntimeException. "something"))
+                   UnsupportedOperationException)
+          (print-str test "died with java.lang.RuntimeException: something")
+          ""
+          (print-str test "failed")
+          "0 tests of 1 success")
+  (?test= (?throws (throw (RuntimeException. "something")) Exception
+                   "some%s" 'thing)
+          ""
+          "1 tests of 1 success")
+  (?test= (?throws (throw (RuntimeException. "something")) Exception
+                   "some other %s" 'thing)
+          "Died with: something"
+          "Expected: some other thing"
+          ""
+          (print-str test "failed")
+          "0 tests of 1 success"))
+
 ;(run-tests namespace & more-namespaces)
-;?throws
-;test dies with exception
+;?throws [expr exception],
+;        [expr exception message & args]
+
+
              
 

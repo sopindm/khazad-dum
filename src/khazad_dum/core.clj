@@ -58,7 +58,7 @@
   (with-test-environment 
     (try (form)
          (catch Exception e
-           (report-failure (println-str name "died with" (.getMessage e)))
+           (report-failure (print-str name "died with" (.toString e)))
            false))))
 
 (defn- do-run-tests [tests ns]
@@ -129,4 +129,21 @@
                                '~expr 
                                (#'lines-diff v1# v2#)
                                (#'lines-diff v2# v1#))))))
+
+(defmacro ?throws 
+  ([form exception] `(?throws ~form ~exception nil))
+  ([form exception message & args]
+     (let [exc-sym (gensym "exc")]
+       `(try ~form
+             (report-failure (print-str (pr-str '~form) "failed to die"))
+             (catch ~exception ~exc-sym
+               ~(if message
+                  `(let [got# (.getMessage ~exc-sym)
+                        expected# (format ~message ~@args)]
+                     (if-not (= got# expected#)
+                       (report-failure (format "Died with: %s%nExpected: %s"
+                                               got#
+                                               expected#))
+                       (report-success)))
+                  `(report-success)))))))
 
