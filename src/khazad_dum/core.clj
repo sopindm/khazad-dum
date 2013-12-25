@@ -7,23 +7,23 @@
 
 (defonce ^:dynamic *tests* (atom {}))
 
-(defn- update-tests [tests name body]
+(defn- update-test [tests name body]
   (conj (vec (remove #(= (first %) name) tests))
         [name body]))
 
-(defn- update-ns-tests [tests ns name body]
-  (update-in tests [ns] #(update-tests % name body)))
+(defn- update-ns-test [tests ns name body]
+  (update-in tests [ns] #(update-test % name body)))
 
 (defn add-test [name body]
-  (let [{ns :ns sym :name} (meta name)]
-    (swap! *tests* #(update-ns-tests % ns sym body))))
+  (let [ns (:ns (meta name))]
+    (swap! *tests* #(update-ns-tests % ns name body))))
 
 (defn get-tests [ns]
   (get @*tests* ns))
 
 (defn get-test [name]
-  (let [{sym :name ns :ns} (meta name)]
-    (if-let [[[_ test]] (filter #(= (first %) sym) (get-tests ns))]
+  (let [ns (:ns (meta name))]
+    (if-let [[[_ test]] (filter #(= (first %) name) (get-tests ns))]
       test
       (throw (java.lang.IllegalArgumentException. 
               (print-str "Wrong test name" name))))))
@@ -61,26 +61,26 @@
            (report-failure (print-str name "died with" (.toString e)))
            false))))
 
-(defn- do-run-tests [tests ns]
+(defn- do-run-tests [tests]
   (let [results (doall (map (fn [[key val]] [key (do-run-test key val)]) tests))
         failed (remove (fn [[_ result]] (empty? result)) results)]
     (doall (map #(doall (map println (second %))) failed))
     (println)
-    (doall (map #(println (if ns (symbol (name (ns-name ns)) (name (first %))) 
-                              (first %))
-                          "failed")
+    (doall (map #(println (if (var? (first %))
+                            (let [{ns :ns name :name} (meta (first %))]
+                              (str ns "/" name))
+                            (first %)) "failed")
                 failed))
     (println (- (count results) (count failed)) "tests of" 
              (count results) "success")))
 
 (defn run-test [name]
   (if-let [form (if (var? name) (get-test name) name)]
-    (do-run-tests [[name form]] (if (var? name) (-> name meta :ns)))
+    (do-run-tests [[name form]])
     (throw (java.lang.IllegalArgumentException. (format "Wrong test %s" name)))))
 
-(defn run-tests [ns-sym]
-  (let [ns (find-ns ns-sym)]
-    (do-run-tests (get-tests ns) ns)))
+(defn run-tests [& namespaces]
+  (do-run-tests (mapcat (comp get-tests find-ns) namespaces)))
 
 ;;
 ;; Test predicates

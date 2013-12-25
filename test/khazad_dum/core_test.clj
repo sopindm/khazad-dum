@@ -157,10 +157,8 @@
           (print-str test "failed")
           "0 tests of 1 success"))
 
-;(run-tests namespace & more-namespaces)
-;?throws [expr exception],
-;        [expr exception message & args]
 
 
              
+
 
