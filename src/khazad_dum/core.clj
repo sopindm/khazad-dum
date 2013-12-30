@@ -16,7 +16,7 @@
 
 (defn add-test [name body]
   (let [ns (:ns (meta name))]
-    (swap! *tests* #(update-ns-tests % ns name body))))
+    (swap! *tests* #(update-ns-test % ns name body))))
 
 (defn get-tests [ns]
   (get @*tests* ns))
@@ -29,8 +29,7 @@
               (print-str "Wrong test name" name))))))
 
 (defmacro deftest [name & body]
-  (let [internal (intern *ns* name)]
-    `(add-test ~internal (fn [] ~@body))))
+  `(#'khazad-dum.core/add-test ~'name (fn [] ~@body)))
 
 ;;
 ;; Reports and results
@@ -77,7 +76,7 @@
 (defn run-test [name]
   (if-let [form (if (var? name) (get-test name) name)]
     (do-run-tests [[name form]])
-    (throw (java.lang.IllegalArgumentException. (format "Wrong test %s" name)))))
+    (throw (IllegalArgumentException. (format "Wrong test %s" name)))))
 
 (defn run-tests [& namespaces]
   (do-run-tests (mapcat (comp get-tests find-ns) namespaces)))
