@@ -8,7 +8,7 @@ A clojure unit test framework. Designed to be minimalistic and usable.
 
 Usage pattern is quite simple:
 
-1. Add reference to khazad-dum to your project [khazad-dum "0.1.0"]
+1. Add reference to khazad-dum to your project [khazad-dum "0.1.1"]
 2. Require khazad-dum.core namespace in your tests.
 3. Write some tests with deftest form.
 4. Run tests with run-test, run-tests forms.
