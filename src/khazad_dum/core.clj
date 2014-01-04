@@ -29,7 +29,8 @@
               (print-str "Wrong test name" name))))))
 
 (defmacro deftest [name & body]
-  `(#'khazad-dum.core/add-test ~'name (fn [] ~@body)))
+  (let [nname (intern *ns* name)]
+    `(#'khazad-dum.core/add-test '~nname (fn [] ~@body))))
 
 ;;
 ;; Reports and results
