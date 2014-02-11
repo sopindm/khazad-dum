@@ -1,5 +1,6 @@
 (ns khazad-dum.core
-  (:use [clojure.string :only [join]]))
+  (:require [khazad-dum.listener :as l]
+            [clojure.string :refer [join]]))
 
 ;;
 ;; Tests storing
@@ -35,13 +36,12 @@
 ;;
 ;; Reports and results
 ;;
-
-(defn ^:dynamic report-success []
-  true)
-
 (def ^:dynamic *test-results* (atom []))
 
-(defn ^:dynamic report-failure [message]
+(defn report-success [message]
+  true)
+
+(defn report-failure [message]
   (swap! *test-results* #(conj % message))
   true)
 
@@ -49,12 +49,6 @@
   `(binding [*test-results* (atom [])]
      ~@body
      @*test-results*))
-
-;;
-;; Listener API
-;;
-
-;global -> namespace -> unit -> message
 
 ;{:tag :success :message "(+ 2 2) is 4" :time 0.00002} 
 ;{:tag :test :name #'my-awesome-test :messages [...] :time 0.001}
@@ -64,12 +58,18 @@
 ;; Running tests
 ;;
 
+(defmacro with-err-str [& body]
+  `(let [s# (new java.io.StringWriter)]
+     (binding [*err* s#]
+       ~@body
+       (str s#))))
+
 (defn- do-run-test [name form]
   (with-test-environment 
     (try (form)
          (catch Exception e
-           (report-failure (str (print-str name "died with" (.toString e))
-                                (with-out-str (clojure.repl/pst e))))
+           (report-failure (str (println-str name "died with" (.toString e))
+                                (with-err-str (clojure.repl/pst e))))
            false))))
 
 (defn- do-run-tests [tests]
@@ -100,19 +100,19 @@
 (defmacro ?false [expr]
   `(let [v# ~expr]
      (if (false? v#)
-       (report-success)
+       (report-success (format "%s is %s" '~expr v#))
        (report-failure (format "%s is %s. Expected false" '~expr v#)))))
 
 (defmacro ?true [expr]
   `(let [v# ~expr]
      (if (true? v#)
-       (report-success)
+       (report-success (format "%s is %s" '~expr v#))
        (report-failure (format "%s is %s. Expected true" '~expr v#)))))
 
 (defmacro ?= [val1 val2]
   `(let [v1# ~val1, v2# ~val2]
      (if (= v1# v2#)
-       (report-success)
+       (report-success (format "%s and %s is%n%s" '~val1 '~val2 v1#))
        (report-failure (format "%s is%n%s%nExpected %s that is%n%s"
                                '~val1 v1# '~val2 v2#)))))
 

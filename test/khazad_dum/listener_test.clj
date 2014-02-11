@@ -38,7 +38,7 @@
 (deftest default-listener-global-success-reporting
   (let [report {:type :report :namespaces [{:type :ns :name "some namespace" :units [{} {} {}]}
                                            {:type :ns :name "other namespace" :units [{} {}]}]}]
-    (?= (with-out-str (?= (l/report-run report) nil))
+    (?= (with-out-str (?= (l/report-run report) report))
         (join (map println-str ["--some namespace-- 3/3"
                                 "--other namespace-- 2/2"
                                 ""
@@ -71,6 +71,10 @@
                                 ""
                                 "10 tests of 10 success in 11.5s"])))))
 
+;;
+;; Identity listener
+;;
+
 (defmacro with-identity-listener [name & body]
   `(let [~name (l/identity-listener)]
      (binding [l/*listener* ~name]
@@ -93,6 +97,15 @@
       (l/report-unit unit2)
       (?= (l/units l) [unit1 unit2]))))
 
+(deftest merging-identity-listener-messages-in-unit
+  (with-identity-listener l
+    (let [m1 {:name "m1"} m2 {:name "m2"}]
+      (l/report-message m1)
+      (l/report-message m2)
+      (?= (l/report-unit {:name "u" :messages [{:name "m3"}]})
+          {:name "u" :messages [m1 m2 {:name "m3"}]})
+      (?= (l/messages l) []))))
+
 (deftest identity-listener-namespace-reporting
   (with-identity-listener l
     (let [ns1 {:name "ns1"}
@@ -102,9 +115,44 @@
       (l/report-namespace ns2)
       (?= (l/namespaces l) [ns1 ns2]))))
 
+(deftest identity-listener-units-in-namespace
+  (with-identity-listener l
+    (let [u1 {:name "u1"} u2 {:name "u2"}]
+      (l/report-unit u1)
+      (l/report-unit u2)
+      (?= (l/report-namespace {:name "ns" :units [{:name "u3"}]})
+          {:name "ns" :units [u1 u2 {:name "u3"}]})
+      (?= (l/units l) []))))
+
 (deftest identity-listener-run-reporting
   (with-identity-listener l
     (let [r {:namespaces {:ns1 :ns2}}]
       (?= (with-out-str (?= (l/report-run r) r)) "")
       (?= (l/reports l) [r]))))
+
+(deftest identity-listener-reporting-run-with-namespaces
+  (with-identity-listener l
+    (let [ns1 {:name "ns1"} ns2 {:name "ns2"}]
+      (l/report-namespace ns1)
+      (l/report-namespace ns2)
+      (?= (l/report-run {:name "run" :namespaces [{:name "ns3"}]})
+          {:name "run" :namespaces [ns1 ns2 {:name "ns3"}]})
+      (?= (l/namespaces l) []))))
       
+(deftest merging-listeners
+  (let [parent (reify l/Listener
+                 (on-message [_ _] (print "parent message-") false)
+                 (on-unit [_ _] (print "parent unit-") false)
+                 (on-namespace [_ _] (print "parent namespace-") false)
+                 (on-report [_ _] (print "parent run-") false))
+        child (reify l/Listener
+                 (on-message [_ _] (print "child message") true)
+                 (on-unit [_ _] (print "child unit") true)
+                 (on-namespace [_ _] (print "child namespace") true)
+                 (on-report [_ _] (print "child run") true))]
+    (binding [l/*listener* (l/merge-listeners parent child)]
+      (?= (with-out-str (?true (l/report-message {}))) "parent message-child message")
+      (?= (with-out-str (?true (l/report-unit {}))) "parent unit-child unit")
+      (?= (with-out-str (?true (l/report-namespace {}))) "parent namespace-child namespace")
+      (?= (with-out-str (?true (l/report-run {}))) "parent run-child run"))))
+

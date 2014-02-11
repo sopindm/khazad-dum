@@ -71,6 +71,17 @@
                            (println-str test2 "failed")
                            "0 tests of 1 success%n"))))))
 
+(deftest dying-with-exception
+  (letfn [(test [] (throw (java.lang.Exception. "test")))]
+    (?= (first (line-seq (java.io.BufferedReader. (java.io.StringReader. (with-out-str (run-test test))))))
+        (print-str test "died with java.lang.Exception: test"))))
+
+(defmacro ?test= [form & lines]
+  `(let [~'test (fn [] ~form)]
+     (?lines= (with-out-str (run-test ~'test))
+              ~@lines)))
+
+(comment
 (deftest ?lines=-test
   (letfn [(test1 [] (?lines= (format "abc%ndef%nghi%n")
                              "abc"
@@ -116,19 +127,6 @@
                      (println-str test4 "failed")
                      "0 tests of 1 success%n")))))
 
-(deftest dying-with-exception
-  (letfn [(test [] (throw (java.lang.Exception. "test")))]
-    (?lines= (with-out-str (run-test test))
-             (print-str test "died with java.lang.Exception: test")
-             ""
-             (print-str test "failed")
-             "0 tests of 1 success")))
-
-(defmacro ?test= [form & lines]
-  `(let [~'test (fn [] ~form)]
-     (?lines= (with-out-str (run-test ~'test))
-              ~@lines)))
-
 (deftest ?throws-test
   (?test= (?throws (throw (RuntimeException. "something"))
                    RuntimeException)
@@ -155,7 +153,7 @@
           "Expected: some other thing"
           ""
           (print-str test "failed")
-          "0 tests of 1 success"))
+          "0 tests of 1 success")))
 
 
 
