@@ -51,6 +51,16 @@
      @*test-results*))
 
 ;;
+;; Listener API
+;;
+
+;global -> namespace -> unit -> message
+
+;{:tag :success :message "(+ 2 2) is 4" :time 0.00002} 
+;{:tag :test :name #'my-awesome-test :messages [...] :time 0.001}
+;{:units [{:tag :test ...}] :time 0.01}
+
+;;
 ;; Running tests
 ;;
 
@@ -58,7 +68,8 @@
   (with-test-environment 
     (try (form)
          (catch Exception e
-           (report-failure (print-str name "died with" (.toString e)))
+           (report-failure (str (print-str name "died with" (.toString e))
+                                (with-out-str (clojure.repl/pst e))))
            false))))
 
 (defn- do-run-tests [tests]

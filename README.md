@@ -12,6 +12,8 @@ Usage pattern is quite simple:
 2. Require khazad-dum.core namespace in your tests.
 3. Write some tests with deftest form.
 4. Run tests with run-test, run-tests forms.
+5. ?not=
+6. lines of failed checks
 
 ## Examples
 
@@ -106,9 +108,26 @@ Arguments: [form exception]
 Checks that 'form' throws 'exception'
 With 'message' argument checks that exception message equals to `(format ~message ~@ args)` 
 
+## To Do
+
+1. Benchmarking framework
+2. Testing time and time for separate tests (optional?)
+3. Extenstions to ?= macro
+4. Removing tests
+5. Checks die with exceptions, not tests
+6. ?isa check
+7. run-tests returns failed tests
+8. run-tests from console 
+9. ?seq= check
+10. run-tests recursive
+11. run tests interactive
+12. lein hook to preload tests
+13. project template
+14. lein plugin (replaces lein test and lein deploy maybe)
+
 ## License
 
-Copyright © 2013 sopindm@gmail.com
+Copyright © 2013-2014 sopindm@gmail.com
 
 Distributed under the Apache License version 2.0
 
