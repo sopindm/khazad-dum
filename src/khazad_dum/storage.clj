@@ -11,12 +11,20 @@
 
 (defn units
   ([storage] (mapcat second @storage))
-  ([storage ns] (get @storage ns [])))
+  ([storage ns]
+     (let [ns (if (symbol? ns)
+                (or (find-ns ns)
+                    (throw (IllegalArgumentException.
+                            (format "Unknown namespace %s" ns))))
+                ns)]
+       (get @storage ns []))))
 
 (defn conj-unit! [units name value]
   (let [ns (-> name meta :ns)]
-    (swap! units (fn [m] (assoc m ns (conj (get m ns [])
+    (swap! units (fn [m] (assoc m ns (conj (vec (remove #(= (:name %) name)
+                                                        (get m ns)))
                                            {:name name :value value}))))))
+
 
 (defn unit [storage v]
   (first (clojure.core/filter #(= (:name %) v) (units storage (-> v meta :ns)))))
@@ -37,7 +45,7 @@
 
 (defonce ^:dynamic *units* {})
 
-(defmacro defunit [name body]
+(defmacro defunit [name & body]
   `(do (def ~name)
        (conj-unit! *units* (var ~name) (fn [] ~@body))))
 

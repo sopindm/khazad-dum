@@ -11,7 +11,7 @@
 (deftest simple-test-output
   (let [test #(println "Hello from test")]
     (assert (= (with-out-str (run-test test))
-               (format "Hello from test%n%n1 tests of 1 success%n" )))))
+               (format "Hello from test%n%n1 tests of 1 success%n")))))
 
 (deftest running-named-test
   (assert (= (with-out-str (run-test #'tests-are-running))
@@ -81,7 +81,6 @@
      (?lines= (with-out-str (run-test ~'test))
               ~@lines)))
 
-(comment
 (deftest ?lines=-test
   (letfn [(test1 [] (?lines= (format "abc%ndef%nghi%n")
                              "abc"
@@ -127,33 +126,34 @@
                      (println-str test4 "failed")
                      "0 tests of 1 success%n")))))
 
-(deftest ?throws-test
-  (?test= (?throws (throw (RuntimeException. "something"))
-                   RuntimeException)
-          ""
-          "1 tests of 1 success")
-  (?test= (?throws "everything fine" Exception)
-          "\"everything fine\" failed to die"
-          ""
-          (print-str test "failed")
-          "0 tests of 1 success")
-  (?test= (?throws (throw (RuntimeException. "something"))
-                   UnsupportedOperationException)
-          (print-str test "died with java.lang.RuntimeException: something")
-          ""
-          (print-str test "failed")
-          "0 tests of 1 success")
-  (?test= (?throws (throw (RuntimeException. "something")) Exception
-                   "some%s" 'thing)
-          ""
-          "1 tests of 1 success")
-  (?test= (?throws (throw (RuntimeException. "something")) Exception
-                   "some other %s" 'thing)
-          "Died with: something"
-          "Expected: some other thing"
-          ""
-          (print-str test "failed")
-          "0 tests of 1 success")))
+(comment
+  (deftest ?throws-test
+    (?test= (?throws (throw (RuntimeException. "something"))
+                     RuntimeException)
+            ""
+            "1 tests of 1 success")
+    (?test= (?throws "everything fine" Exception)
+            "\"everything fine\" failed to die"
+            ""
+            (print-str test "failed")
+            "0 tests of 1 success")
+    (?test= (?throws (throw (RuntimeException. "something"))
+                     UnsupportedOperationException)
+            (print-str test "died with java.lang.RuntimeException: something")
+            ""
+            (print-str test "failed")
+            "0 tests of 1 success")
+    (?test= (?throws (throw (RuntimeException. "something")) Exception
+                     "some%s" 'thing)
+            ""
+            "1 tests of 1 success")
+    (?test= (?throws (throw (RuntimeException. "something")) Exception
+                     "some other %s" 'thing)
+            "Died with: something"
+            "Expected: some other thing"
+            ""
+            (print-str test "failed")
+            "0 tests of 1 success")))
 
 
 

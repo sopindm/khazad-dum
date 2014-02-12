@@ -16,7 +16,14 @@
     (s/conj-unit! units unit-var unit-value)
     (?= (s/namespaces units) [my-ns])
     (?= (s/units units) [unit])
-    (?= (s/units units my-ns) [unit])))
+    (?= (s/units units my-ns) [unit])
+    (?= (s/units units 'khazad-dum.storage-test) [unit])))
+
+(deftest units-for-wrong-namespace
+  (let [units (s/units-storage)
+        sym (gensym)]
+    (?throws (s/units units sym) IllegalArgumentException
+             (format "Unknown namespace %s" sym))))
 
 (declare test-var1 test-var2)
 
@@ -30,6 +37,12 @@
       (?= (s/namespaces units) [my-ns])
       (?= (s/units units) my-units)
       (?= (s/units units my-ns) my-units))))
+
+(deftest replacing-unit
+  (let [units (s/units-storage)]
+    (s/conj-unit! units #'test-var1 "test value")
+    (s/conj-unit! units #'test-var1 "other test value")
+    (?= (s/units units) [{:name #'test-var1 :value "other test value"}])))
 
 (deftest adding-units-from-several-namespaces
   (let [ns1 (create-ns 'test-ns1)

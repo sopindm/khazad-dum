@@ -1,41 +1,16 @@
 (ns khazad-dum.core
-  (:require [khazad-dum.listener :as l]
+  (:require [khazad-dum.storage :as s]
+            [khazad-dum.listener :as l]
             [clojure.string :refer [join]]))
 
-;;
-;; Tests storing
-;;
-
-(defonce ^:dynamic *tests* (atom {}))
-
-(defn- update-test [tests name body]
-  (conj (vec (remove #(= (first %) name) tests))
-        [name body]))
-
-(defn- update-ns-test [tests ns name body]
-  (update-in tests [ns] #(update-test % name body)))
-
-(defn add-test [name body]
-  (let [ns (:ns (meta name))]
-    (swap! *tests* #(update-ns-test % ns name body))))
-
-(defn get-tests [ns]
-  (get @*tests* ns))
-
-(defn get-test [name]
-  (let [ns (:ns (meta name))]
-    (if-let [[[_ test]] (filter #(= (first %) name) (get-tests ns))]
-      test
-      (throw (java.lang.IllegalArgumentException. 
-              (print-str "Wrong test name" name))))))
-
 (defmacro deftest [name & body]
-  (let [nname (intern *ns* name)]
-    `(#'khazad-dum.core/add-test '~nname (fn [] ~@body))))
+  `(s/defunit ~(vary-meta name #(assoc % :test true))
+     ~@body))
 
 ;;
 ;; Reports and results
 ;;
+
 (def ^:dynamic *test-results* (atom []))
 
 (defn report-success [message]
@@ -49,10 +24,6 @@
   `(binding [*test-results* (atom [])]
      ~@body
      @*test-results*))
-
-;{:tag :success :message "(+ 2 2) is 4" :time 0.00002} 
-;{:tag :test :name #'my-awesome-test :messages [...] :time 0.001}
-;{:units [{:tag :test ...}] :time 0.01}
 
 ;;
 ;; Running tests
@@ -73,7 +44,8 @@
            false))))
 
 (defn- do-run-tests [tests]
-  (let [results (doall (map (fn [[key val]] [key (do-run-test key val)]) tests))
+  (let [results (doall (map (fn [{:keys [name value]}]
+                              [name (do-run-test name value)]) tests))
         failed (remove (fn [[_ result]] (empty? result)) results)]
     (doall (map #(doall (map println (second %))) failed))
     (println)
@@ -86,12 +58,11 @@
              (count results) "success")))
 
 (defn run-test [name]
-  (if-let [form (if (var? name) (get-test name) name)]
-    (do-run-tests [[name form]])
-    (throw (IllegalArgumentException. (format "Wrong test %s" name)))))
+  (let [form (if (var? name) (s/unit s/*units* name) {:name name :value name})]
+    (do-run-tests [form])))
 
 (defn run-tests [& namespaces]
-  (do-run-tests (mapcat (comp get-tests find-ns) namespaces)))
+  (do-run-tests (mapcat (partial s/units s/*units*) namespaces)))
 
 ;;
 ;; Test predicates
@@ -135,7 +106,7 @@
   `(let [v1# ~expr
          v2# (#'lines-to-string (list ~@lines))]
      (if (= v1# v2#)
-       (report-success)
+       (report-success (format "%s is %s" '~expr v1#))
        (report-failure (format "%s is:%n%s%nExpected:%n%s" 
                                '~expr 
                                (#'lines-diff v1# v2#)
@@ -155,6 +126,6 @@
                        (report-failure (format "Died with: %s%nExpected: %s"
                                                got#
                                                expected#))
-                       (report-success)))
-                  `(report-success)))))))
+                       (report-success "OK")))
+                  `(report-success "OK")))))))
 
