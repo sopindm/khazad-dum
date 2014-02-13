@@ -103,41 +103,40 @@
                                   ""
                                   "5 tests of 5 success in 1h 1m 54s"]))))))
 
+;default listener no namespace info for 1 namespace run
 ;default listener with nil namespace
 
 ;;
 ;; Identity listener
 ;;
 
-(comment
 (defmacro with-identity-listener [name & body]
   `(let [~name (l/identity-listener)]
-     (binding [l/*listener* ~name]
-       ~@body)))
+     ~@body))
 
 (deftest identity-listener-message-reporting
   (with-identity-listener l
     (let [message {:message "hello" :type :failure}]
-      (?= (with-out-str (?= (l/report-message message) message)) "")
+      (?= (with-out-str (?= (l/report-message l message) message)) "")
       (?= (l/messages l) [message])
-      (l/report-message (assoc message :time 123))
+      (l/report-message l (assoc message :time 123))
       (?= (l/messages l) [message (assoc message :time 123)]))))
 
 (deftest identity-listener-unit-reporting
   (with-identity-listener l
     (let [unit1 {:name "u1"}
           unit2 {:name "u2"}]
-      (?= (with-out-str (?= (l/report-unit unit1) unit1)) "")
+      (?= (with-out-str (?= (l/report-unit l unit1) unit1)) "")
       (?= (l/units l) [unit1])
-      (l/report-unit unit2)
+      (l/report-unit l unit2)
       (?= (l/units l) [unit1 unit2]))))
 
 (deftest merging-identity-listener-messages-in-unit
   (with-identity-listener l
     (let [m1 {:name "m1"} m2 {:name "m2"}]
-      (l/report-message m1)
-      (l/report-message m2)
-      (?= (l/report-unit {:name "u" :messages [{:name "m3"}]})
+      (l/report-message l m1)
+      (l/report-message l m2)
+      (?= (l/report-unit l {:name "u" :messages [{:name "m3"}]})
           {:name "u" :messages [m1 m2 {:name "m3"}]})
       (?= (l/messages l) []))))
 
@@ -145,32 +144,32 @@
   (with-identity-listener l
     (let [ns1 {:name "ns1"}
           ns2 {:name "ns2"}]
-      (?= (with-out-str (?= (l/report-namespace ns1) ns1)) "")
+      (?= (with-out-str (?= (l/report-namespace l ns1) ns1)) "")
       (?= (l/namespaces l) [ns1])
-      (l/report-namespace ns2)
+      (l/report-namespace l ns2)
       (?= (l/namespaces l) [ns1 ns2]))))
 
 (deftest identity-listener-units-in-namespace
   (with-identity-listener l
     (let [u1 {:name "u1"} u2 {:name "u2"}]
-      (l/report-unit u1)
-      (l/report-unit u2)
-      (?= (l/report-namespace {:name "ns" :units [{:name "u3"}]})
+      (l/report-unit l u1)
+      (l/report-unit l u2)
+      (?= (l/report-namespace l {:name "ns" :units [{:name "u3"}]})
           {:name "ns" :units [u1 u2 {:name "u3"}]})
       (?= (l/units l) []))))
 
 (deftest identity-listener-run-reporting
   (with-identity-listener l
     (let [r {:namespaces {:ns1 :ns2}}]
-      (?= (with-out-str (?= (l/report-run r) r)) "")
+      (?= (with-out-str (?= (l/report-run l r) r)) "")
       (?= (l/reports l) [r]))))
 
 (deftest identity-listener-reporting-run-with-namespaces
   (with-identity-listener l
     (let [ns1 {:name "ns1"} ns2 {:name "ns2"}]
-      (l/report-namespace ns1)
-      (l/report-namespace ns2)
-      (?= (l/report-run {:name "run" :namespaces [{:name "ns3"}]})
+      (l/report-namespace l ns1)
+      (l/report-namespace l ns2)
+      (?= (l/report-run l {:name "run" :namespaces [{:name "ns3"}]})
           {:name "run" :namespaces [ns1 ns2 {:name "ns3"}]})
       (?= (l/namespaces l) []))))
       
@@ -185,9 +184,9 @@
                  (on-unit [_ _] (print "child unit") true)
                  (on-namespace [_ _] (print "child namespace") true)
                  (on-report [_ _] (print "child run") true))]
-    (binding [l/*listener* (l/merge-listeners parent child)]
-      (?= (with-out-str (?true (l/report-message {}))) "parent message-child message")
-      (?= (with-out-str (?true (l/report-unit {}))) "parent unit-child unit")
-      (?= (with-out-str (?true (l/report-namespace {}))) "parent namespace-child namespace")
-      (?= (with-out-str (?true (l/report-run {}))) "parent run-child run")))))
+    (let [l (l/merge-listeners parent child)]
+      (?= (with-out-str (?true (l/report-message l {}))) "parent message-child message")
+      (?= (with-out-str (?true (l/report-unit l {}))) "parent unit-child unit")
+      (?= (with-out-str (?true (l/report-namespace l {}))) "parent namespace-child namespace")
+      (?= (with-out-str (?true (l/report-run l {}))) "parent run-child run"))))
 
