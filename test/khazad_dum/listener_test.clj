@@ -105,6 +105,7 @@
 
 ;default listener no namespace info for 1 namespace run
 ;default listener with nil namespace
+;default listener on-report returns failed tests names
 
 ;;
 ;; Identity listener

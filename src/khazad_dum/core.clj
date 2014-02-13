@@ -48,17 +48,15 @@
   (l/report-namespace {:type :ns :name ns}))
 
 (defn run-test [name]
-  (binding [l/*listener* (l/merge-listeners (l/identity-listener) (l/test-listener))]
+  (binding [l/*listener* (l/merge-listeners (l/identity-listener) (l/*listen-with*))]
     (let [form (if (var? name) (s/unit s/*units* name) {:name name :value name})]
       (run-namespace-tests nil [form])
-      (l/report-run {:type :report})
-      nil)))
-
+      (l/report-run {:type :report}))))
+      
 (defn run-tests [& namespaces]
-  (binding [l/*listener* (l/merge-listeners (l/identity-listener) (l/test-listener))]
+  (binding [l/*listener* (l/merge-listeners (l/identity-listener) (l/*listen-with*))]
     (dorun (map #(run-namespace-tests % (s/units s/*units* %)) namespaces))
-    (l/report-run {:type :report})
-    nil))
+    (l/report-run {:type :report})))
 
 ;;
 ;; Test predicates

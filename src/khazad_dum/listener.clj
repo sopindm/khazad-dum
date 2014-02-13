@@ -150,7 +150,8 @@
     (on-namespace [this namespace] (test-report-namespace namespace))
     (on-report [this report] (test-report-run report))))
 
-(def ^:dynamic *listener* (test-listener))
+(def ^:dynamic *listener* nil)
+(def ^:dynamic *listen-with* test-listener)
 
 (defn merge-listeners [parent child]
   (reify Listener

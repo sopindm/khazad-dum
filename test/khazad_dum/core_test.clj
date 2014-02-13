@@ -1,5 +1,6 @@
 (ns khazad-dum.core-test
-  (:require [khazad-dum.core :refer :all])
+  (:require [khazad-dum.core :refer :all]
+            [khazad-dum.listener :as l])
   (:use [clojure.string :only [join] :as str]))
 
 (deftest tests-are-running
@@ -8,14 +9,18 @@
 (defn check-tests []
   (run-test #'tests-are-running))
 
+(defmacro with-identity-listener [& forms]
+  `(binding [l/*listen-with* l/identity-listener]
+     ~@forms))
+
 (deftest simple-test-output
   (let [test #(println "Hello from test")]
-    (assert (= (with-out-str (run-test test))
-               (format "Hello from test%n%n1 tests of 1 success%n")))))
+    (assert (.matches (with-out-str (run-test test))
+                      (format "Hello from test%n%n1 tests of 1 success in .*%n")))))
 
 (deftest running-named-test
-  (assert (= (with-out-str (run-test #'tests-are-running))
-             (format "Tests are running%n%n1 tests of 1 success%n"))))
+  (assert (.matches (with-out-str (run-test #'tests-are-running))
+                    (format "Tests are running%n%n1 tests of 1 success in .*%n"))))
   
 (ns khazad-dum.test-ns
   (:require [khazad-dum.core :refer :all]))
@@ -32,46 +37,48 @@
 (in-ns 'khazad-dum.core-test)
 
 (deftest run-tests-test
-  (assert (= (with-out-str (run-tests 'khazad-dum.test-ns))
-             (join (map println-str
-                        ["Dummy 1"
-                         "Dummy 2"
-                         "false is false. Expected true"
-                         ""
-                         "--khazad-dum.test-ns-- 2/3"
-                         "  #'khazad-dum.test-ns/dummy-test-3 FAILED"
-                         ""
-                         ""
-                         "2 tests of 3 success"])))))
+  (assert (.matches (with-out-str (run-tests 'khazad-dum.test-ns))
+                    (join (map println-str
+                               ["Dummy 1"
+                                "Dummy 2"
+                                "false is false. Expected true"
+                                ""
+                                "--khazad-dum.test-ns-- 2/3 in .*"
+                                "  #'khazad-dum.test-ns/dummy-test-3 FAILED"
+                                ""
+                                ""
+                                "2 tests of 3 success in .*"])))))
 
 (deftest ?true-test
   (letfn [(test1 [] (?true true))
           (test2 [] (?true false))]
-    (assert (= (with-out-str (run-test test1))
-               (format "%n1 tests of 1 success%n")))
-    (assert (= (with-out-str (run-test test2))
-               (format "false is false. Expected true%n%n0 tests of 1 success%n")))))
+    (assert (.matches (with-out-str (run-test test1))
+                      (format "%n1 tests of 1 success in .*%n")))
+    (assert (.matches (with-out-str (run-test test2))
+                      (format "false is false. Expected true%n%n0 tests of 1 success in .*%n")))))
 
 (deftest ?false-test
   (letfn [(test1 [] (?false true))
           (test2 [] (?false false))]
-    (?true (= (with-out-str (run-test test1))
-              (format "true is true. Expected false%n%n0 tests of 1 success%n"
-                      (print-str test1))))
-    (?true (= (with-out-str (run-test test2))
-              (format "%n1 tests of 1 success%n")))))
+    (?true (.matches (with-out-str (run-test test1))
+                     (format "true is true. Expected false%n%n0 tests of 1 success in .*%n"
+                             (print-str test1))))
+    (?true (.matches (with-out-str (run-test test2))
+                     (format "%n1 tests of 1 success in .*%n")))))
     
 (deftest ?=-test
   (letfn [(test1 [] (?= 2 2))
           (test2 [] (?= (+ 2 2) 5))]
-    (?true (= (with-out-str (run-test test1))
-           (format "%n1 tests of 1 success%n")))
-    (?true (= (with-out-str (run-test test2))
-              (format (str "(+ 2 2) is%n"
-                           "4%n"
-                           "Expected 5 that is%n"
-                           "5%n%n"
-                           "0 tests of 1 success%n"))))))
+    (?true (.matches (with-out-str (run-test test1))
+                     (format "%n1 tests of 1 success in .*%n")))
+    (?true (.matches (with-out-str (run-test test2))
+                     (format (str "\\(\\+ 2 2\\) is%n"
+                                  "4%n"
+                                  "Expected 5 that is%n"
+                                  "5%n%n"
+                                  "0 tests of 1 success in .*%n"))))))
+
+;?matches test
 
 (deftest dying-with-exception
   (letfn [(test [] (throw (java.lang.Exception. "test")))]
