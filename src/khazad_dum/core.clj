@@ -14,16 +14,10 @@
 (def ^:dynamic *test-results* (atom []))
 
 (defn report-success [message]
-  true)
+  (l/report-message {:type :success :message message}))
 
 (defn report-failure [message]
-  (swap! *test-results* #(conj % message))
-  true)
-
-(defmacro with-test-environment [& body]
-  `(binding [*test-results* (atom [])]
-     ~@body
-     @*test-results*))
+  (l/report-message {:type :failure :message message}))
 
 ;;
 ;; Running tests
@@ -35,34 +29,36 @@
        ~@body
        (str s#))))
 
-(defn- do-run-test [name form]
-  (with-test-environment 
-    (try (form)
-         (catch Exception e
-           (report-failure (str (println-str name "died with" (.toString e))
-                                (with-err-str (clojure.repl/pst e))))
-           false))))
+(defmacro with-time [& forms]
+  (let [time-form (fn [] '(. System  nanoTime))]
+    `(let [start# ~(time-form)]
+       ~@forms
+       (/ (double (- ~(time-form) start#)) 1e9))))
 
-(defn- do-run-tests [tests]
-  (let [results (doall (map (fn [{:keys [name value]}]
-                              [name (do-run-test name value)]) tests))
-        failed (remove (fn [[_ result]] (empty? result)) results)]
-    (doall (map #(doall (map println (second %))) failed))
-    (println)
-    (doall (map #(println (if (var? (first %))
-                            (let [{ns :ns name :name} (meta (first %))]
-                              (str ns "/" name))
-                            (first %)) "failed")
-                failed))
-    (println (- (count results) (count failed)) "tests of" 
-             (count results) "success")))
+(defn- do-run-test [{:keys [name value]}]
+  (let [time (with-time (try (value)
+                        (catch Exception e
+                          (report-failure (str (println-str name "died with" (.toString e))
+                                               (with-err-str (clojure.repl/pst e))))
+                          false)))]
+    (l/report-unit {:type :test :name name :time time})))
+  
+(defn- run-namespace-tests [ns tests]
+  (dorun (map do-run-test tests))
+  (l/report-namespace {:type :ns :name ns}))
 
 (defn run-test [name]
-  (let [form (if (var? name) (s/unit s/*units* name) {:name name :value name})]
-    (do-run-tests [form])))
+  (binding [l/*listener* (l/merge-listeners (l/identity-listener) (l/test-listener))]
+    (let [form (if (var? name) (s/unit s/*units* name) {:name name :value name})]
+      (run-namespace-tests nil [form])
+      (l/report-run {:type :report})
+      nil)))
 
 (defn run-tests [& namespaces]
-  (do-run-tests (mapcat (partial s/units s/*units*) namespaces)))
+  (binding [l/*listener* (l/merge-listeners (l/identity-listener) (l/test-listener))]
+    (dorun (map #(run-namespace-tests % (s/units s/*units* %)) namespaces))
+    (l/report-run {:type :report})
+    nil))
 
 ;;
 ;; Test predicates

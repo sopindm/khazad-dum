@@ -7,74 +7,109 @@
 ;; Default listener
 ;;
 
+(defmacro with-default-listener [name & body]
+  `(let [~name (l/test-listener)]
+     ~@body))
+
 (deftest default-listener-success-message
-  (let [message {:type :success :message "(+ 2 2) is 4"}]
-    (?= (with-out-str (?= (l/report-message message) message))
-        "")))
+  (with-default-listener listener
+    (let [message {:type :success :message "(+ 2 2) is 4"}]
+      (?= (with-out-str (?= (l/report-message listener message) message))
+          ""))))
 
 (deftest default-listener-fail-message
-  (let [text "(+ 2 2) is 5. Expected 4 that is 4"
-        message {:type :failure :message text}]
-    (?= (with-out-str (?= (l/report-message message) message)) text)))
+  (with-default-listener listener
+    (let [text "(+ 2 2) is 5. Expected 4 that is 4"
+          message {:type :failure :message text}]
+      (?= (with-out-str (?= (l/report-message listener message) message)) (println-str text)))))
 
 (deftest default-listener-fail-with-line-info
-  (let [text "failure\n"
-        message {:type :failure :message text :line 123 :file "test.clj"}]
-    (?= (with-out-str (l/report-message message)) 
-        (format "failure%nIn line 123 \"test.clj\"%n"))
-    (?= (with-out-str (l/report-message (dissoc message :line)))
-        (format "failure%nIn \"test.clj\"%n"))
-    (?= (with-out-str (l/report-message (dissoc message :file)))
-        (format "failure%nIn line 123%n"))))
+  (with-default-listener listener
+    (let [text "failure"
+          message {:type :failure :message text :line 123 :file "test.clj"}]
+      (?= (with-out-str (l/report-message listener message)) 
+          (format "failure%nIn line 123 \"test.clj\"%n"))
+      (?= (with-out-str (l/report-message listener (dissoc message :line)))
+          (format "failure%nIn \"test.clj\"%n"))
+      (?= (with-out-str (l/report-message listener (dissoc message :file)))
+          (format "failure%nIn line 123%n")))))
   
 (deftest default-listener-test-reporting
-  (let [test {:type :test :name "my test" :messages [{:type :something} {} {:type :success}]}]
-    (?= (with-out-str (?= (l/report-unit test) test)) "")))
+  (with-default-listener listener
+    (let [test {:type :test :name "my test" :messages [{:type :something} {} {:type :success}]}]
+      (?= (with-out-str (?= (l/report-unit listener test) test)) ""))))
 
 (deftest default-listener-namespace-reporting
-  (let [report {:type :ns :units [{:type :test :name "test1"} {:type :benchmark :name "bench"}]}]
-    (?= (with-out-str (?= (l/report-namespace report) report)) "")))
+  (with-default-listener listener
+    (let [report {:type :ns :units [{:type :test :name "test1"} {:type :benchmark :name "bench"}]}]
+      (?= (with-out-str (?= (l/report-namespace listener report) report)) ""))))
 
 (deftest default-listener-global-success-reporting
-  (let [report {:type :report :namespaces [{:type :ns :name "some namespace" :units [{} {} {}]}
-                                           {:type :ns :name "other namespace" :units [{} {}]}]}]
-    (?= (with-out-str (?= (l/report-run report) report))
-        (join (map println-str ["--some namespace-- 3/3"
-                                "--other namespace-- 2/2"
-                                ""
-                                "5 tests of 5 success"])))))
+  (with-default-listener listener
+    (let [report {:type :report :namespaces [{:type :ns :name "some namespace" :units [{} {} {}]}
+                                             {:type :ns :name "other namespace" :units [{} {}]}]}]
+      (?= (with-out-str (?= (l/report-run listener report) report))
+          (join (map println-str [""
+                                  "--some namespace-- 3/3"
+                                  "--other namespace-- 2/2"
+                                  ""
+                                  "5 tests of 5 success"]))))))
 
 (deftest default-listener-global-failures-reporting
-  (let [ns1 {:name "ns1" :units [{} {}
-                                 {:name "t1" :messages [{} {} {:name "f1" :type :failure} {}]} 
-                                 {}
-                                 {:name "t2" :messages [{} {:name "f2" :type :failure} {} {} {}
-                                                        {:name "f3" :type :failure}]}]}
-        ns2 {:name "success namespace" :units [{} {} {}]}]
-    (?= (with-out-str (l/report-run {:namespaces [ns1 ns2]}))
-        (join (map println-str ["--ns1-- 3/5"
-                                "  t1 FAILED"
-                                "  t2 FAILED"
-                                ""
-                                "--success namespace-- 3/3"
-                                ""
-                                "6 tests of 8 success"])))))
+  (with-default-listener listener
+    (let [ns1 {:name "ns1" :units [{} {}
+                                   {:name "t1" :messages [{} {} {:name "f1" :type :failure} {}]} 
+                                   {}
+                                   {:name "t2" :messages [{} {:name "f2" :type :failure} {} {} {}
+                                                          {:name "f3" :type :failure}]}]}
+          ns2 {:name "success namespace" :units [{} {} {}]}]
+      (?= (with-out-str (l/report-run listener {:namespaces [ns1 ns2]}))
+          (join (map println-str [""
+                                  "--ns1-- 3/5"
+                                  "  t1 FAILED"
+                                  "  t2 FAILED"
+                                  ""
+                                  "--success namespace-- 3/3"
+                                  ""
+                                  "6 tests of 8 success"]))))))
 
 (deftest default-listener-global-report-with-timings
-  (let [ns1 {:name "ns1" :units [{:time 1} {:time 0.5} {}]}
-        ns2 {:name "ns2" :units [{:time 10} {} {} {}]}
-        ns3 {:name "ns3" :units [{} {} {}]}]
-    (?= (with-out-str (l/report-run {:namespaces [ns1 ns2 ns3]}))
-        (join (map println-str ["--ns1-- 3/3 in 1.5s"
-                                "--ns2-- 4/4 in 10s"
-                                "--ns3-- 3/3"
-                                ""
-                                "10 tests of 10 success in 11.5s"])))))
+  (with-default-listener listener
+    (let [ns1 {:name "ns1" :units [{:time 1} {:time 0.5} {}]}
+          ns2 {:name "ns2" :units [{:time 10} {} {} {}]}
+          ns3 {:name "ns3" :units [{} {} {}]}]
+      (?= (with-out-str (l/report-run listener {:namespaces [ns1 ns2 ns3]}))
+          (join (map println-str [""
+                                  "--ns1-- 3/3 in 1.5s"
+                                  "--ns2-- 4/4 in 10s"
+                                  "--ns3-- 3/3"
+                                  ""
+                                  "10 tests of 10 success in 11.5s"]))))))
+
+(deftest default-listener-priting-time
+  (with-default-listener listener
+    (let [ns1 {:name "ns1" :units [{:time 1.23456}]}
+          ns2 {:name "ns2" :units [{:time 0.0123456789}]}
+          ns3 {:name "ns3" :units [{:time 0.0000123456789}]}
+          ns4 {:name "ns4" :units [{:time 61.23456}]}
+          ns5 {:name "ns5" :units [{:time 3652.123456}]}]
+      (?= (with-out-str (l/report-run listener {:namespaces [ns1 ns2 ns3 ns4 ns5]}))
+          (join (map println-str [""
+                                  "--ns1-- 1/1 in 1.2s"
+                                  "--ns2-- 1/1 in 12.3ms"
+                                  "--ns3-- 1/1 in 12.3mus"
+                                  "--ns4-- 1/1 in 1m 1s"
+                                  "--ns5-- 1/1 in 1h 52s"
+                                  ""
+                                  "5 tests of 5 success in 1h 1m 54s"]))))))
+
+;default listener with nil namespace
 
 ;;
 ;; Identity listener
 ;;
 
+(comment
 (defmacro with-identity-listener [name & body]
   `(let [~name (l/identity-listener)]
      (binding [l/*listener* ~name]
@@ -154,5 +189,5 @@
       (?= (with-out-str (?true (l/report-message {}))) "parent message-child message")
       (?= (with-out-str (?true (l/report-unit {}))) "parent unit-child unit")
       (?= (with-out-str (?true (l/report-namespace {}))) "parent namespace-child namespace")
-      (?= (with-out-str (?true (l/report-run {}))) "parent run-child run"))))
+      (?= (with-out-str (?true (l/report-run {}))) "parent run-child run")))))
 

@@ -33,12 +33,16 @@
 
 (deftest run-tests-test
   (assert (= (with-out-str (run-tests 'khazad-dum.test-ns))
-             (format (str "Dummy 1%n"
-                          "Dummy 2%n"
-                          "false is false. Expected true%n"
-                          "%n"
-                          "khazad-dum.test-ns/dummy-test-3 failed%n"
-                          "2 tests of 3 success%n")))))
+             (join (map println-str
+                        ["Dummy 1"
+                         "Dummy 2"
+                         "false is false. Expected true"
+                         ""
+                         "--khazad-dum.test-ns-- 2/3"
+                         "  #'khazad-dum.test-ns/dummy-test-3 FAILED"
+                         ""
+                         ""
+                         "2 tests of 3 success"])))))
 
 (deftest ?true-test
   (letfn [(test1 [] (?true true))
@@ -46,14 +50,13 @@
     (assert (= (with-out-str (run-test test1))
                (format "%n1 tests of 1 success%n")))
     (assert (= (with-out-str (run-test test2))
-               (format "false is false. Expected true%n%n%s failed%n0 tests of 1 success%n"
-                       (print-str test2))))))
+               (format "false is false. Expected true%n%n0 tests of 1 success%n")))))
 
 (deftest ?false-test
   (letfn [(test1 [] (?false true))
           (test2 [] (?false false))]
     (?true (= (with-out-str (run-test test1))
-              (format "true is true. Expected false%n%n%s failed%n0 tests of 1 success%n"
+              (format "true is true. Expected false%n%n0 tests of 1 success%n"
                       (print-str test1))))
     (?true (= (with-out-str (run-test test2))
               (format "%n1 tests of 1 success%n")))))
@@ -68,7 +71,6 @@
                            "4%n"
                            "Expected 5 that is%n"
                            "5%n%n"
-                           (println-str test2 "failed")
                            "0 tests of 1 success%n"))))))
 
 (deftest dying-with-exception
@@ -101,7 +103,6 @@
                           "<<<...1...>>>%n"
                           "def%n"
                           "<<<...1...>>>%n%n%n"
-                          (println-str test2 "failed")
                           "0 tests of 1 success%n")))))
   (letfn [(test3 [] (?lines= (println-str "abc")
                              "abc"
@@ -115,7 +116,6 @@
                      "Expected:%n"
                      "<<<...1...>>>%n"
                      "def%n%n%n"
-                     (println-str test3 "failed")
                      "0 tests of 1 success%n")))
     (?= (with-out-str (run-test test4))
         (format (str "(println-str \"def\") is:%n"
@@ -123,7 +123,6 @@
                      "Expected:%n"
                      "abc%n"
                      "<<<...1...>>>%n%n%n"
-                     (println-str test4 "failed")
                      "0 tests of 1 success%n")))))
 
 (comment

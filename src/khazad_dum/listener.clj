@@ -8,17 +8,21 @@
 
 (declare ^:dynamic *listener*)
 
-(defn report-message [message]
-  (on-message *listener* message))
+(defn report-message
+  ([message] (on-message *listener* message))
+  ([listener message] (on-message listener message)))
 
-(defn report-unit [unit]
-  (on-unit *listener* unit))
+(defn report-unit
+  ([unit] (on-unit *listener* unit))
+  ([listener unit] (on-unit listener unit)))
 
-(defn report-namespace [namespace]
-  (on-namespace *listener* namespace))
+(defn report-namespace
+  ([namespace] (on-namespace *listener* namespace))
+  ([listener namespace] (on-namespace listener namespace)))
 
-(defn report-run [report]
-  (on-report *listener* report))
+(defn report-run
+  ([report] (on-report *listener* report))
+  ([listener report] (on-report listener report)))
 
 ;;
 ;; Identity listener
@@ -83,7 +87,7 @@
 
 (defn- test-report-message [message]
   (when (#{:failure} (:type message))
-    (print (:message message))
+    (println (:message message))
     (when (or (:line message) (:file message))
       (println (str "In"
                     (if-let [line (:line message)] (str " line " line) "")
@@ -93,6 +97,23 @@
 (defn- test-report-unit [unit] unit)
 
 (defn- test-report-namespace [namespace] namespace)
+
+(defn- time-string [time]
+  (letfn [(big-unit [time name seconds]
+            (let [val (int (/ time seconds))]
+              (str val name " " (time-string (int (- time (* val seconds)))))))
+          (unit [time name seconds]
+            (let [bigval (int (* (/ time seconds) 10))
+                  int (quot bigval 10)
+                  float (first (drop-while #(and (not (zero? %)) (= (mod % 10) 0))
+                                           (iterate #(/ % 10) (mod bigval 10))))]
+              (str int (if (zero? float) "" (str "." float)) name)))]
+    (cond (>= time 3600) (big-unit time "h" 3600)
+          (>= time 60) (big-unit time "m" 60)
+          (>= time 0.1) (unit time "s" 1)
+          (>= time 0.0001) (unit time "ms" 0.001)
+          (>= time 0.0000001) (unit time "mus" 0.000001)
+          :else time)))
 
 (defn- test-report-run [report]
   (letfn [(success? [unit]
@@ -104,20 +125,22 @@
                   success (count (filter success? (:units report)))
                   failed (count failures)
                   time (reduce + (map #(or (:time %) 0) (:units report)))]
-              (println (format "--%s-- %d/%d%s" (:name report)  success (+ success failed)
-                               (if (zero? time) ""
-                                   (format " in %ss" time))))
-              (when (seq failures)
-                (doall (map report-failure- failures))
-                (println))
+              (when (:name report)
+                (println (format "--%s-- %d/%d%s" (:name report)  success (+ success failed)
+                                 (if (zero? time) ""
+                                     (format " in %s" (time-string time)))))
+                (when (seq failures)
+                  (doall (map report-failure- failures))
+                  (println)))
               {:success success :failed failed :time time}))]
-     (let [results (doall (map report-namespace- (:namespaces report)))
-           success (reduce + (map :success results))
-           failed (reduce + (map :failed results))
-           time (reduce + (map :time results))]
-       (println)
-       (println (format "%d tests of %d success%s" success (+ success failed)
-                        (if (zero? time) "" (format " in %ss" time))))))
+    (println)
+    (let [results (doall (map report-namespace- (:namespaces report)))
+          success (reduce + (map :success results))
+          failed (reduce + (map :failed results))
+          time (reduce + (map :time results))]
+      (when (some :name (:namespaces report)) (println))
+      (println (format "%d tests of %d success%s" success (+ success failed)
+                       (if (zero? time) "" (format " in %s" (time-string time)))))))
   report)
 
 (defn test-listener []
@@ -132,14 +155,10 @@
 (defn merge-listeners [parent child]
   (reify Listener
     (on-message [this message]
-      (on-message parent message) 
-      (on-message child message))
+      (on-message child (on-message parent message)))
     (on-unit [this unit]
-      (on-unit parent unit) 
-      (on-unit child unit))
+      (on-unit child (on-unit parent unit)))
     (on-namespace [this namespace]
-      (on-namespace parent namespace)
-      (on-namespace child namespace))
+      (on-namespace child (on-namespace parent namespace)))
     (on-report [this report]
-      (on-report parent report)
-      (on-report child report))))
+      (on-report child (on-report parent report)))))
