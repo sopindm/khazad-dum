@@ -118,3 +118,12 @@
     (?= (s/filter :test (s/units units)) [unit1 unit2])
     (?= (s/filter :always (s/units units)) [unit1 unit3])
     (?= (s/filter (complement :test) (s/units units)) [unit3])))
+
+;;running unit
+;;unit exception failure
+;;running namespace
+;;running several namespaces
+;;run namespaces recursive 
+;;running unloaded namespaces (bultitude)
+;;interactive runs ('run all' *-> 'run failures' -> 'run all')
+;;reload-and-run option
