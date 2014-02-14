@@ -48,7 +48,7 @@
   (with-default-listener listener
     (let [report {:type :report :namespaces [{:type :ns :name "some namespace" :units [{} {} {}]}
                                              {:type :ns :name "other namespace" :units [{} {}]}]}]
-      (?= (with-out-str (?= (l/report-run listener report) report))
+      (?= (with-out-str (?= (l/report-run listener report) nil))
           (join (map println-str [""
                                   "--some namespace-- 3/3"
                                   "--other namespace-- 2/2"
@@ -63,7 +63,8 @@
                                    {:name "t2" :messages [{} {:name "f2" :type :failure} {} {} {}
                                                           {:name "f3" :type :failure}]}]}
           ns2 {:name "success namespace" :units [{} {} {}]}]
-      (?= (with-out-str (l/report-run listener {:namespaces [ns1 ns2]}))
+      (?= (with-out-str (?= (l/report-run listener {:namespaces [ns1 ns2]})
+                            ["t1" "t2"]))
           (join (map println-str [""
                                   "--ns1-- 3/5"
                                   "  t1 FAILED"
@@ -103,9 +104,12 @@
                                   ""
                                   "5 tests of 5 success in 1h 1m 54s"]))))))
 
-;default listener no namespace info for 1 namespace run
-;default listener with nil namespace
-;default listener on-report returns failed tests names
+(deftest default-listener-has-no-namespace-info-for-one-namespace-run
+  (with-default-listener listener
+    (let [ns {:name "ns" :units [{} {} {} {:messages [{:type :failure}]}]}]
+      (?lines= (with-out-str (l/report-run listener {:namespaces [ns]}))
+               ""
+               "3 tests of 4 success"))))
 
 ;;
 ;; Identity listener

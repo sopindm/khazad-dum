@@ -120,28 +120,29 @@
             (not (some #(= (:type %) :failure) (:messages unit))))
           (report-failure- [unit]
             (println (format "  %s FAILED" (:name unit))))
-          (report-namespace- [report]
+          (report-namespace- [report verbose]
             (let [failures (remove success? (:units report))
                   success (count (filter success? (:units report)))
                   failed (count failures)
                   time (reduce + (map #(or (:time %) 0) (:units report)))]
-              (when (:name report)
+              (when verbose
                 (println (format "--%s-- %d/%d%s" (:name report)  success (+ success failed)
                                  (if (zero? time) ""
                                      (format " in %s" (time-string time)))))
                 (when (seq failures)
                   (doall (map report-failure- failures))
                   (println)))
-              {:success success :failed failed :time time}))]
+              {:success success :failed failed :time time :failures failures}))] 
     (println)
-    (let [results (doall (map report-namespace- (:namespaces report)))
+    (let [results (doall (map #(report-namespace- % (> (count (:namespaces report)) 1))
+                              (:namespaces report)))
           success (reduce + (map :success results))
           failed (reduce + (map :failed results))
           time (reduce + (map :time results))]
-      (when (some :name (:namespaces report)) (println))
+      (when (> (count (:namespaces report)) 1) (println))
       (println (format "%d tests of %d success%s" success (+ success failed)
-                       (if (zero? time) "" (format " in %s" (time-string time)))))))
-  report)
+                       (if (zero? time) "" (format " in %s" (time-string time)))))
+      (seq (map :name (mapcat :failures results))))))
 
 (defn test-listener []
   (reify Listener

@@ -43,10 +43,6 @@
                                 "Dummy 2"
                                 "false is false. Expected true"
                                 ""
-                                "--khazad-dum.test-ns-- 2/3 in .*"
-                                "  #'khazad-dum.test-ns/dummy-test-3 FAILED"
-                                ""
-                                ""
                                 "2 tests of 3 success in .*"])))))
 
 (deftest ?true-test
