@@ -78,17 +78,19 @@
                                   "5%n%n"
                                   "0 tests of 1 success in .*%n"))))))
 
-;?matches test
+(deftest ?matches-test
+  (?true (.matches (with-out-str (run-test #(?matches "abc" "a.c")))
+                   (format "%n1 tests of 1 success in .*%n")))
+  (?true (.matches (with-out-str (run-test #(?matches "abc" "a.")))
+                   (format (str "abc is%n"
+                                "abc\n"
+                                "Expected #\"a.\"%n%n"
+                                "0 tests of 1 success in .*%n")))))
 
 (deftest dying-with-exception
   (letfn [(test [] (throw (java.lang.Exception. "test")))]
     (?= (first (line-seq (java.io.BufferedReader. (java.io.StringReader. (with-out-str (run-test test))))))
         (print-str test "died with java.lang.Exception: test"))))
-
-(defmacro ?test= [form & lines]
-  `(let [~'test (fn [] ~form)]
-     (?lines= (with-out-str (run-test ~'test))
-              ~@lines)))
 
 (deftest ?lines=-test
   (letfn [(test1 [] (?lines= (format "abc%ndef%nghi%n")
@@ -99,70 +101,66 @@
                              "abc"
                              "def" 
                              "ghi"))]
-    (?= (with-out-str (run-test test1))
-        (format "%n1 tests of 1 success%n"))
-    (?= (with-out-str (run-test test2))
-        (str (println-str "(format \"abc%nfed%nghi%n\") is:")
-             (format (str "<<<...1...>>>%n"
-                          "fed%n"
-                          "<<<...1...>>>%n%n"
-                          "Expected:%n"
-                          "<<<...1...>>>%n"
-                          "def%n"
-                          "<<<...1...>>>%n%n%n"
-                          "0 tests of 1 success%n")))))
+    (?matches (with-out-str (run-test test1))
+              (format "%n1 tests of 1 success in .*%n"))
+    (?matches (with-out-str (run-test test2))
+              (str (println-str "\\(format \"abc%nfed%nghi%n\"\\) is:")
+                   (format (str "<<<...1...>>>%n"
+                                "fed%n"
+                                "<<<...1...>>>%n%n"
+                                "Expected:%n"
+                                "<<<...1...>>>%n"
+                                "def%n"
+                                "<<<...1...>>>%n%n%n"
+                                "0 tests of 1 success in .*%n")))))
   (letfn [(test3 [] (?lines= (println-str "abc")
                              "abc"
                              "def"))
           (test4 [] (?lines= (println-str "def")
                              "abc"
                              "def"))]
-    (?= (with-out-str (run-test test3))
-        (format (str "(println-str \"abc\") is:%n"
-                     "<<<...1...>>>%n%n"
-                     "Expected:%n"
-                     "<<<...1...>>>%n"
-                     "def%n%n%n"
-                     "0 tests of 1 success%n")))
-    (?= (with-out-str (run-test test4))
-        (format (str "(println-str \"def\") is:%n"
-                     "<<<...1...>>>%n%n"
-                     "Expected:%n"
-                     "abc%n"
-                     "<<<...1...>>>%n%n%n"
-                     "0 tests of 1 success%n")))))
+    (?matches (with-out-str (run-test test3))
+              (format (str "\\(println-str \"abc\"\\) is:%n"
+                           "<<<...1...>>>%n%n"
+                           "Expected:%n"
+                           "<<<...1...>>>%n"
+                           "def%n%n%n"
+                           "0 tests of 1 success in .*%n")))
+    (?matches (with-out-str (run-test test4))
+              (format (str "\\(println-str \"def\"\\) is:%n"
+                           "<<<...1...>>>%n%n"
+                           "Expected:%n"
+                           "abc%n"
+                           "<<<...1...>>>%n%n%n"
+                           "0 tests of 1 success in .*%n")))))
 
-(comment
-  (deftest ?throws-test
-    (?test= (?throws (throw (RuntimeException. "something"))
-                     RuntimeException)
-            ""
-            "1 tests of 1 success")
-    (?test= (?throws "everything fine" Exception)
-            "\"everything fine\" failed to die"
-            ""
-            (print-str test "failed")
-            "0 tests of 1 success")
-    (?test= (?throws (throw (RuntimeException. "something"))
-                     UnsupportedOperationException)
-            (print-str test "died with java.lang.RuntimeException: something")
-            ""
-            (print-str test "failed")
-            "0 tests of 1 success")
-    (?test= (?throws (throw (RuntimeException. "something")) Exception
-                     "some%s" 'thing)
-            ""
-            "1 tests of 1 success")
-    (?test= (?throws (throw (RuntimeException. "something")) Exception
-                     "some other %s" 'thing)
-            "Died with: something"
-            "Expected: some other thing"
-            ""
-            (print-str test "failed")
-            "0 tests of 1 success")))
+(defmacro ?test= [form & lines]
+  `(let [~'test #(~@form)]
+     (?matches (with-out-str (run-test ~'test))
+               (join (map println-str [~@lines])))))
 
-
-
-             
-
-
+(deftest ?throws-test
+  (?test= (?throws (throw (RuntimeException. "something"))
+                   RuntimeException)
+          ""
+          "1 tests of 1 success in .*")
+  (?test= (?throws "everything fine" Exception)
+          "\"everything fine\" failed to die"
+          ""
+          "0 tests of 1 success in .*")
+  (?test= (?throws (throw (RuntimeException. "something"))
+                   UnsupportedOperationException)
+          ".* died with java.lang.RuntimeException: something"
+          "(.|\n)*"
+          ""
+          "0 tests of 1 success in .*")
+  (?test= (?throws (throw (RuntimeException. "something")) Exception
+                   "some%s" 'thing)
+          ""
+          "1 tests of 1 success in .*")
+  (?test= (?throws (throw (RuntimeException. "something")) Exception
+                   "some other %s" 'thing)
+          "Died with: something"
+          "Expected: some other thing"
+          ""
+          "0 tests of 1 success in .*"))

@@ -81,6 +81,13 @@
        (report-failure (format "%s is%n%s%nExpected %s that is%n%s"
                                '~val1 v1# '~val2 v2#)))))
 
+(defmacro ?matches [expr regexpr]
+  `(let [v# ~expr]
+     (if (.matches v# ~regexpr)
+       (report-success (format "%s matches %s" '~expr ~regexpr))
+       (report-failure (format "%s is%n%s%nExpected #\"%s\""
+                               '~expr v# ~regexpr)))))
+
 (defn- lines-to-string [lines]
   (join (map println-str lines)))
 
