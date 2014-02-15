@@ -160,3 +160,5 @@
           "Expected: some other thing"
           ""
           "0 tests of 1 success in .*"))
+
+;?contains test

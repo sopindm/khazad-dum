@@ -1,6 +1,8 @@
 (ns khazad-dum.storage-test
   (:require [khazad-dum.core :refer :all]
-            [khazad-dum.storage :as s]))
+            [khazad-dum.storage :as s]
+            [khazad-dum.listener :as l])
+  (:use [clojure.core.match :only [match]]))
 
 (deftest empty-storage
   (let [units (s/units-storage)]
@@ -118,6 +120,42 @@
     (?= (s/filter :test (s/units units)) [unit1 unit2])
     (?= (s/filter :always (s/units units)) [unit1 unit3])
     (?= (s/filter (complement :test) (s/units units)) [unit3])))
+
+(defmacro with-identity-listener [& body]
+  `(binding [l/*listen-with* nil]
+     ~@body))
+
+(deftest running-units
+  (let [test ^{:unit-type :test-unit} #(l/report-message {:name "test"})
+        result (with-identity-listener
+                 (s/run-unit test))]
+    (?true (match result
+                  {:type report
+                   :namespaces [{:name nil :units 
+                                 [{:name test :type :test-unit
+                                   :messages [{:name "test"}] 
+                                   :time _}]}]}
+                  true
+                  :else false))))
+
+(deftest running-unit-by-name
+  (let [units (s/units-storage)
+        ns (create-ns 'test-ns)
+        var (intern ns 'var)]
+    (s/conj-unit! units var #(l/report-message {:name "test"}))
+    (binding [s/*units* units]
+      (?true (match (with-identity-listener (s/run-unit var))
+                    {:type report
+                     :namespaces [{:name ns :units
+                                   [{:name var :type nil
+                                     :messages [{:name "test"}]
+                                     :time _}]}]} true
+                    :else false)))))
+                                     
+
+;running unit
+;;unit by name
+;;lambda as unit
 
 ;;running unit
 ;;unit exception failure

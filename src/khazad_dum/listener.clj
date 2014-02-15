@@ -152,7 +152,7 @@
     (on-report [this report] (test-report-run report))))
 
 (def ^:dynamic *listener* nil)
-(def ^:dynamic *listen-with* test-listener)
+(def ^:dynamic *listen-with* nil)
 
 (defn merge-listeners [parent child]
   (reify Listener

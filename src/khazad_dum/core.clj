@@ -4,7 +4,7 @@
             [clojure.string :refer [join]]))
 
 (defmacro deftest [name & body]
-  `(s/defunit ~(vary-meta name #(assoc % :test true))
+  `(s/defunit ~(vary-meta name #(assoc % :unit-type :test :test true))
      ~@body))
 
 ;;
@@ -48,13 +48,14 @@
   (l/report-namespace {:type :ns :name ns}))
 
 (defn run-test [name]
-  (binding [l/*listener* (l/merge-listeners (l/identity-listener) (l/*listen-with*))]
+  (binding [l/*listener* (l/merge-listeners (l/identity-listener) (l/test-listener))]
     (let [form (if (var? name) (s/unit s/*units* name) {:name name :value name})]
       (run-namespace-tests nil [form])
       (l/report-run {:type :report}))))
       
 (defn run-tests [& namespaces]
-  (binding [l/*listener* (l/merge-listeners (l/identity-listener) (l/*listen-with*))]
+  (binding [l/*listener*
+            (l/merge-listeners (l/identity-listener) (l/test-listener))]
     (dorun (map #(run-namespace-tests % (s/units s/*units* %)) namespaces))
     (l/report-run {:type :report})))
 

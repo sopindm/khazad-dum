@@ -1,5 +1,6 @@
 (ns khazad-dum.storage
-  (:refer-clojure :exclude [filter]))
+  (:refer-clojure :exclude [filter])
+  (:require [khazad-dum.listener :as l]))
 
 (defn units-storage []
   (atom {}))
@@ -49,3 +50,22 @@
   `(do (def ~name)
        (conj-unit! *units* (var ~name) (fn [] ~@body))))
 
+;;
+;;Running units
+;;
+
+(defmacro ^:private with-time [& forms]
+  (let [time-form (fn [] '(. System  nanoTime))]
+    `(let [start# ~(time-form)]
+       ~@forms
+       (/ (double (- ~(time-form) start#)) 1e9))))
+
+(defn run-unit [u]
+  (binding [l/*listener* (l/identity-listener)]
+    (let [unit (if (var? u) (unit *units* u) {:name u :value u})]
+      (let [run-time (with-time ((:value unit)))]
+        (l/report-unit {:name (:name unit)
+                        :type (-> u meta :unit-type)
+                        :time run-time})
+        (l/report-namespace {:name (-> u meta :ns)})
+        (l/report-run {:type :report})))))
