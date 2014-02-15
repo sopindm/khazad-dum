@@ -214,6 +214,3 @@
                                          (s/run-units [ns3 :recursive])))))
           #{ns3 ns4 ns5}))))
 
-;;reload-and-run option
-;(run-units <ns1> <ns2> :reload)
-

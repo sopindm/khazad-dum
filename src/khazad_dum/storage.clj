@@ -74,7 +74,8 @@
                        report))))
 
 (defmacro ^:private with-run-context [& body]
-  `(binding [l/*listener* (l/identity-listener)]
+  `(binding [l/*listener* (if l/*listener* (l/merge-listeners (l/identity-listener) l/*listener*)
+                            (l/identity-listener))]
      ~@body))
 
 (defn run-unit [u]
@@ -90,7 +91,8 @@
     (l/report-namespace {:name namespace})))
 
 (defn- subnamespaces [ns classpath?]
-  (let [ns-str (-> ns name)
+  (let [ns-sym (if (instance? clojure.lang.Namespace ns) (ns-name ns) ns)
+        ns-str (name ns-sym)
         [ns-str test?] (if (.endsWith ns-str "-test")
                           [(apply str (drop-last 5 ns-str)) true]
                           [ns-str false])
@@ -102,19 +104,21 @@
                 (if test? (and (.endsWith ns-name "-test")
                                (.startsWith ns-name base-name))
                     (.startsWith ns-name base-name))))]
-      (conj (clojure.core/filter ns-filter namespaces) ns))))
+      (conj (clojure.core/filter ns-filter namespaces) ns-sym))))
 
 (defn parse-namespace-form [form]
   (let [[name options] (if (sequential? form)
                          [(first form) (set (rest form))]
                          [form #{}])]
     (cond (contains? options :recursive)
-          (let [ns-syms (subnamespaces name (contains? options :require))]
-            (when (contains? options :require)
-              (apply require ns-syms))
-            (map find-ns ns-syms))
-          (contains? options :require)
-          (do (require name) [name])
+          (map find-ns
+               (mapcat #(parse-namespace-form (cons % (disj options
+                                                            :recursive)))
+                       (subnamespaces name (contains? options :require))))
+          (contains? options :require) (do (require name) [name])
+          (contains? options :reload) (do (dissoc-namespace! *units* (find-ns name))
+                                          (require name :reload)
+                                          [name])
           :else [name])))
 
 (defn run-units [& namespaces]
