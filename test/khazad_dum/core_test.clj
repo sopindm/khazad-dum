@@ -162,3 +162,7 @@
           "0 tests of 1 success in .*"))
 
 ;?contains test
+
+;;interactive runs ('run all' *-> 'run failures' -> 'run all')
+;(run-tests <ns1> <ns2> :interactive)
+

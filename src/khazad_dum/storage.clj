@@ -1,6 +1,7 @@
 (ns khazad-dum.storage
   (:refer-clojure :exclude [filter])
-  (:require [khazad-dum.listener :as l]))
+  (:require [khazad-dum.listener :as l]
+            [bultitude.core :as b]))
 
 (defn units-storage []
   (atom {}))
@@ -60,12 +61,65 @@
        ~@forms
        (/ (double (- ~(time-form) start#)) 1e9))))
 
+(defn run-unit- [{:keys [name value]}]
+  (let [run-time (try (with-time (value))
+                      (catch Exception e
+                        (l/report-message {:type :error
+                                           :exception e
+                                           :unit name})
+                        nil))
+        report {:name name
+                :type (-> name meta :unit-type)}]
+    (l/report-unit (if run-time (assoc report :time run-time)
+                       report))))
+
+(defmacro ^:private with-run-context [& body]
+  `(binding [l/*listener* (l/identity-listener)]
+     ~@body))
+
 (defn run-unit [u]
-  (binding [l/*listener* (l/identity-listener)]
+  (with-run-context
     (let [unit (if (var? u) (unit *units* u) {:name u :value u})]
-      (let [run-time (with-time ((:value unit)))]
-        (l/report-unit {:name (:name unit)
-                        :type (-> u meta :unit-type)
-                        :time run-time})
-        (l/report-namespace {:name (-> u meta :ns)})
-        (l/report-run {:type :report})))))
+      (run-unit- unit)
+      (l/report-namespace {:name (-> u meta :ns)})
+      (l/report-run {:type :report}))))
+
+(defn- run-namespace- [namespace]
+  (let [units (units *units* namespace)]
+    (dorun (map run-unit- units))
+    (l/report-namespace {:name namespace})))
+
+(defn- subnamespaces [ns classpath?]
+  (let [ns-str (-> ns name)
+        [ns-str test?] (if (.endsWith ns-str "-test")
+                          [(apply str (drop-last 5 ns-str)) true]
+                          [ns-str false])
+        base-name (str ns-str \.)
+        namespaces (if classpath? (b/namespaces-on-classpath)
+                       (map ns-name (all-ns)))]
+    (letfn [(ns-filter [namespace]
+              (let [ns-name (name namespace)]
+                (if test? (and (.endsWith ns-name "-test")
+                               (.startsWith ns-name base-name))
+                    (.startsWith ns-name base-name))))]
+      (conj (clojure.core/filter ns-filter namespaces) ns))))
+
+(defn parse-namespace-form [form]
+  (let [[name options] (if (sequential? form)
+                         [(first form) (set (rest form))]
+                         [form #{}])]
+    (cond (contains? options :recursive)
+          (let [ns-syms (subnamespaces name (contains? options :require))]
+            (when (contains? options :require)
+              (apply require ns-syms))
+            (map find-ns ns-syms))
+          (contains? options :require)
+          (do (require name) [name])
+          :else [name])))
+
+(defn run-units [& namespaces]
+  (with-run-context
+    (dorun (map run-namespace- (mapcat parse-namespace-form namespaces)))
+    (l/report-run {:type :report})))
+    
+  

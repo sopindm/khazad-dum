@@ -151,17 +151,69 @@
                                      :messages [{:name "test"}]
                                      :time _}]}]} true
                     :else false)))))
-                                     
+                                    
+(deftest unit-excepiton-failure
+  (let [exception (RuntimeException. "something")
+        unit #(throw exception)
+        result (with-identity-listener (s/run-unit unit))]
+    (?= (get-in result [:namespaces 0 :units 0 :messages 0])
+        {:type :error :exception exception :unit unit})))
 
-;running unit
-;;unit by name
-;;lambda as unit
+(deftest running-namespace-units
+  (let [namespace (create-ns 'test-ns)
+        var1 (intern namespace 'var1)
+        var2 (intern namespace 'var2)
+        var3 (intern namespace 'var3)]
+    (binding [s/*units* (s/units-storage)]
+      (s/conj-unit! s/*units* var1 #(l/report-message {:name "m1"}))
+      (s/conj-unit! s/*units* var2 #(l/report-message {:name "m2"}))
+      (s/conj-unit! s/*units* var3 #(l/report-message {:name "m3"}))
+      (?true (match (with-identity-listener (s/run-units namespace))
+                    {:type :report
+                     :namespaces [{:name namespace :units
+                                   [{:name var1 :type nil :time _
+                                     :messages [{:name "m1"}]}
+                                    {:name var2 :type nil :time _
+                                     :messages [{:name "m2"}]}
+                                    {:name var3 :type nil :time _
+                                     :messages [{:name "m3"}]}]}]} true
+                    :else false)))))
 
-;;running unit
-;;unit exception failure
-;;running namespace
-;;running several namespaces
-;;run namespaces recursive 
-;;running unloaded namespaces (bultitude)
-;;interactive runs ('run all' *-> 'run failures' -> 'run all')
+(deftest running-several-namespaces
+  (let [ns1 (create-ns 'ns1)
+        ns2 (create-ns 'ns2)
+        var1 (intern ns1 'var1)
+        var2 (intern ns2 'var2)]
+    (binding [s/*units* (s/units-storage)]
+      (s/conj-unit! s/*units* var1 #(l/report-message {:name "m1"}))
+      (s/conj-unit! s/*units* var2 #(l/report-message {:name "m2"}))
+      (?true (match (with-identity-listener (s/run-units ns1 ns2))
+                    {:type :report
+                     :namespaces [{:name ns1 :units
+                                   [{:name var1 :type nil :time _
+                                     :messages [{:name "m1"}]}]}
+                                  {:name ns2 :units
+                                   [{:name var2 :type nil :time _
+                                     :messages [{:name "m2"}]}]}]} true
+                    :else false)))))
+
+(deftest running-namespaces-recursive
+  (let [ns1 (create-ns 'ns)
+        ns2 (create-ns 'ns.subns)
+        ns3 (create-ns 'nn-test)
+        ns4 (create-ns 'nn.subnn-test)
+        ns5 (create-ns 'nn.subnn.subsub-test)]
+    (binding [s/*units* (s/units-storage)]
+      (dorun (map #(s/conj-unit! s/*units* (intern % 'var)
+                                 {:name "name" :value (constantly nil)})
+                  [ns1 ns2 ns3 ns4 ns4]))
+      (?= (set (map :name (:namespaces (with-identity-listener
+                                         (s/run-units [ns1 :recursive])))))
+          #{ns1 ns2})
+      (?= (set (map :name (:namespaces (with-identity-listener
+                                         (s/run-units [ns3 :recursive])))))
+          #{ns3 ns4 ns5}))))
+
 ;;reload-and-run option
+;(run-units <ns1> <ns2> :reload)
+
