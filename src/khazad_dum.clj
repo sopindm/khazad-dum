@@ -35,10 +35,18 @@
     (s/run-unit name)))
 
 (def ^:dynamic *listen-with* l/test-listener)
+(def ^:dynamic *interactive-tests* (atom []))
 
-(defn run-tests [& namespaces]
+(defn run-tests [& namespaces-and-options]
   (binding [l/*listener* (*listen-with*)]
-    (apply s/run-units namespaces)))
+    (let [namespaces (remove #{:interactive :reset} namespaces-and-options)
+          interactive? (some #{:interactive} namespaces-and-options)]
+      (if interactive?
+        (if (or (empty? @*interactive-tests*) (some #{:reset} namespaces-and-options))
+          (reset! *interactive-tests* (apply run-tests namespaces))
+          (swap! *interactive-tests* #(concat (run-test (first %))
+                                              (rest %))))
+        (apply s/run-units namespaces)))))
 
 ;;
 ;; Test predicates

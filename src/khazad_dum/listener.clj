@@ -1,4 +1,5 @@
-(ns khazad-dum.listener)
+(ns khazad-dum.listener
+  (:require [clojure.repl]))
 
 (defprotocol Listener
   (on-message [this message])

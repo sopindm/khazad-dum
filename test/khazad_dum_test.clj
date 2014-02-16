@@ -171,8 +171,8 @@
           ""
           "0 tests of 1 success in .*"))
 
-;;interactive runs ('run all' *-> 'run failures' -> 'run all')
-;(run-tests <ns1> <ns2> :interactive)
+;;general compare form
+;;general predicate form
 
 ;?contains test
 
