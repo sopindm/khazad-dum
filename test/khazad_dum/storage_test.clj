@@ -1,5 +1,5 @@
 (ns khazad-dum.storage-test
-  (:require [khazad-dum.core :refer :all]
+  (:require [khazad-dum :refer :all]
             [khazad-dum.storage :as s]
             [khazad-dum.listener :as l])
   (:use [clojure.core.match :only [match]]))
@@ -122,7 +122,7 @@
     (?= (s/filter (complement :test) (s/units units)) [unit3])))
 
 (defmacro with-identity-listener [& body]
-  `(binding [l/*listen-with* nil]
+  `(binding [l/*listener* nil]
      ~@body))
 
 (deftest running-units
@@ -204,8 +204,7 @@
         ns4 (create-ns 'nn.subnn-test)
         ns5 (create-ns 'nn.subnn.subsub-test)]
     (binding [s/*units* (s/units-storage)]
-      (dorun (map #(s/conj-unit! s/*units* (intern % 'var)
-                                 {:name "name" :value (constantly nil)})
+      (dorun (map #(s/conj-unit! s/*units* (intern % 'var) (constantly nil))
                   [ns1 ns2 ns3 ns4 ns4]))
       (?= (set (map :name (:namespaces (with-identity-listener
                                          (s/run-units [ns1 :recursive])))))

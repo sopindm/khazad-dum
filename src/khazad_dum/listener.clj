@@ -85,6 +85,12 @@
 ;; Test listener
 ;;
 
+(defmacro with-err-str [& body]
+  `(let [s# (new java.io.StringWriter)]
+     (binding [*err* s#]
+       ~@body
+       (str s#))))
+
 (defn- test-report-message [message]
   (when (#{:failure} (:type message))
     (println (:message message))
@@ -92,6 +98,10 @@
       (println (str "In"
                     (if-let [line (:line message)] (str " line " line) "")
                     (if-let [file (:file message)] (str " \"" file "\""))))))
+  (when (#{:error} (:type message))
+    (let [e (:exception message)]
+      (println (:unit message) "died with" (.toString e))
+      (print (with-err-str (clojure.repl/pst e)))))
   message)
 
 (defn- test-report-unit [unit] unit)
@@ -117,7 +127,7 @@
 
 (defn- test-report-run [report]
   (letfn [(success? [unit]
-            (not (some #(= (:type %) :failure) (:messages unit))))
+            (not (some #(#{:failure :error} (:type %)) (:messages unit))))
           (report-failure- [unit]
             (println (format "  %s FAILED" (:name unit))))
           (report-namespace- [report verbose]
@@ -152,7 +162,6 @@
     (on-report [this report] (test-report-run report))))
 
 (def ^:dynamic *listener* nil)
-(def ^:dynamic *listen-with* nil)
 
 (defn merge-listeners [parent child]
   (reify Listener
@@ -164,3 +173,4 @@
       (on-namespace child (on-namespace parent namespace)))
     (on-report [this report]
       (on-report child (on-report parent report)))))
+

@@ -1,5 +1,5 @@
 (ns khazad-dum.listener-test
-  (:require [khazad-dum.core :refer :all]
+  (:require [khazad-dum :refer :all]
             [khazad-dum.listener :as l]
             [clojure.string :refer [join]]))
 
@@ -33,6 +33,8 @@
           (format "failure%nIn \"test.clj\"%n"))
       (?= (with-out-str (l/report-message listener (dissoc message :file)))
           (format "failure%nIn line 123%n")))))
+
+;default listener with errors
   
 (deftest default-listener-test-reporting
   (with-default-listener listener
