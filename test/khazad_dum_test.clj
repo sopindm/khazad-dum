@@ -37,6 +37,7 @@
                                ["Dummy 1"
                                 "Dummy 2"
                                 "false is false. Expected true"
+                                "In line .* \"khazad_dum_test\\.clj\""
                                 ""
                                 "2 tests of 3 success in .*"])))))
 
@@ -46,14 +47,21 @@
     (assert (.matches (with-out-str (run-test test1))
                       (format "%n1 tests of 1 success in .*%n")))
     (assert (.matches (with-out-str (run-test test2))
-                      (format "false is false. Expected true%n%n0 tests of 1 success in .*%n")))))
+                      (join (map println-str
+                                 ["false is false. Expected true"
+                                  "In line .* \"khazad_dum_test\\.clj\""
+                                  ""
+                                  "0 tests of 1 success in .*"]))))))
 
 (deftest ?false-test
   (letfn [(test1 [] (?false true))
           (test2 [] (?false false))]
     (?true (.matches (with-out-str (run-test test1))
-                     (format "true is true. Expected false%n%n0 tests of 1 success in .*%n"
-                             (print-str test1))))
+                     (join (map println-str
+                                ["true is true. Expected false"
+                                 "In line .* \"khazad_dum_test.clj\"" 
+                                 ""
+                                 "0 tests of 1 success in .*"]))))
     (?true (.matches (with-out-str (run-test test2))
                      (format "%n1 tests of 1 success in .*%n")))))
     
@@ -66,7 +74,8 @@
                      (format (str "\\(\\+ 2 2\\) is%n"
                                   "4%n"
                                   "Expected 5 that is%n"
-                                  "5%n%n"
+                                  "5%n"
+                                  "In line .* \"khazad_dum_test.clj\"%n%n"
                                   "0 tests of 1 success in .*%n"))))))
 
 (deftest ?matches-test
@@ -74,8 +83,9 @@
                    (format "%n1 tests of 1 success in .*%n")))
   (?true (.matches (with-out-str (run-test #(?matches "abc" "a.")))
                    (format (str "abc is%n"
-                                "abc\n"
-                                "Expected #\"a.\"%n%n"
+                                "abc%n"
+                                "Expected #\"a.\"%n"
+                                "In line .* \"khazad_dum_test.clj\"%n%n"
                                 "0 tests of 1 success in .*%n")))))
 
 (deftest dying-with-exception
@@ -102,9 +112,10 @@
                                 "Expected:%n"
                                 "<<<...1...>>>%n"
                                 "def%n"
-                                "<<<...1...>>>%n%n%n"
+                                "<<<...1...>>>%n%n"
+                                "In line .* \"khazad_dum_test.clj\"%n%n"
                                 "0 tests of 1 success in .*%n")))))
-  (letfn [(test3 [] (?lines= (println-str "abc")
+    (letfn [(test3 [] (?lines= (println-str "abc")
                              "abc"
                              "def"))
           (test4 [] (?lines= (println-str "def")
@@ -115,14 +126,16 @@
                            "<<<...1...>>>%n%n"
                            "Expected:%n"
                            "<<<...1...>>>%n"
-                           "def%n%n%n"
+                           "def%n%n"
+                           "In line .* \"khazad_dum_test.clj\"%n%n"
                            "0 tests of 1 success in .*%n")))
     (?matches (with-out-str (run-test test4))
               (format (str "\\(println-str \"def\"\\) is:%n"
                            "<<<...1...>>>%n%n"
                            "Expected:%n"
                            "abc%n"
-                           "<<<...1...>>>%n%n%n"
+                           "<<<...1...>>>%n%n"
+                           "In line .* \"khazad_dum_test.clj\"%n%n"
                            "0 tests of 1 success in .*%n")))))
 
 (defmacro ?test= [form & lines]
@@ -137,6 +150,7 @@
           "1 tests of 1 success in .*")
   (?test= (?throws "everything fine" Exception)
           "\"everything fine\" failed to die"
+          "In line .* \"khazad_dum_test.clj\""
           ""
           "0 tests of 1 success in .*")
   (?test= (?throws (throw (RuntimeException. "something"))
@@ -153,10 +167,9 @@
                    "some other %s" 'thing)
           "Died with: something"
           "Expected: some other thing"
+          "In line .* \"khazad_dum_test.clj\""
           ""
           "0 tests of 1 success in .*"))
-
-;print failure line
 
 ;;interactive runs ('run all' *-> 'run failures' -> 'run all')
 ;(run-tests <ns1> <ns2> :interactive)

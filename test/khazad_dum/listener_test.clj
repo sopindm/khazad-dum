@@ -34,8 +34,14 @@
       (?= (with-out-str (l/report-message listener (dissoc message :file)))
           (format "failure%nIn line 123%n")))))
 
-;default listener with errors
-  
+(deftest default-listener-with-errors
+  (with-default-listener listener
+    (let [exception (RuntimeException. "something")]
+      (?= (-> (l/report-message listener {:type :error :exception exception :unit "some unit"})
+              with-out-str java.io.StringReader. java.io.BufferedReader. 
+              line-seq first)
+          "some unit died with java.lang.RuntimeException: something"))))
+          
 (deftest default-listener-test-reporting
   (with-default-listener listener
     (let [test {:type :test :name "my test" :messages [{:type :something} {} {:type :success}]}]

@@ -13,11 +13,18 @@
 
 (def ^:dynamic *test-results* (atom []))
 
+(defn- file-and-line []
+  (let [stacktrace (.getStackTrace (Throwable.))]
+    (let [^StackTraceElement s (nth stacktrace 2)]
+      {:file (.getFileName s) :line (.getLineNumber s)})))
+
 (defn report-success [message]
-  (l/report-message {:type :success :message message}))
+  (l/report-message (merge {:type :success :message message}
+                           (file-and-line))))
 
 (defn report-failure [message]
-  (l/report-message {:type :failure :message message}))
+  (l/report-message (merge {:type :failure :message message}
+                           (file-and-line))))
 
 ;;
 ;; Running tests

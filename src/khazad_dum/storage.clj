@@ -114,7 +114,8 @@
           (map find-ns
                (mapcat #(parse-namespace-form (cons % (disj options
                                                             :recursive)))
-                       (subnamespaces name (contains? options :require))))
+                       (subnamespaces name (or (contains? options :require)
+                                               (contains? options :reload)))))
           (contains? options :require) (do (require name) [name])
           (contains? options :reload) (do (dissoc-namespace! *units* (find-ns name))
                                           (require name :reload)
