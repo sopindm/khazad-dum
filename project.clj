@@ -1,4 +1,4 @@
-(defproject khazad-dum "0.2.0-SNAPSHOT"
+(defproject khazad-dum "0.2.0"
   :description "Clojure unit test framework"
   :url ""
   :license {:name "Apache 2.0"
