@@ -158,21 +158,5 @@
           ".* died with java.lang.RuntimeException: something"
           "(.|\n)*"
           ""
-          "0 tests of 1 success")
-  (?test= (?throws (throw (RuntimeException. "something")) Exception
-                   "some%s" 'thing)
-          ""
-          "1 tests of 1 success in .*")
-  (?test= (?throws (throw (RuntimeException. "something")) Exception
-                   "some other %s" 'thing)
-          "Died with: something"
-          "Expected: some other thing"
-          "In line .* \"khazad_dum_test.clj\""
-          ""
-          "0 tests of 1 success in .*"))
-
-;;general compare form
-;;general predicate form
-
-;?contains test
+          "0 tests of 1 success"))
 

@@ -130,7 +130,7 @@
   (letfn [(success? [unit]
             (not (some #(#{:failure :error} (:type %)) (:messages unit))))
           (report-failure- [unit]
-            (println (format "  %s FAILED" (:name unit))))
+            (println (format "  %s FAILED" (-> unit :name))))
           (report-namespace- [report verbose]
             (let [failures (remove success? (:units report))
                   success (count (filter success? (:units report)))
@@ -153,7 +153,7 @@
       (when (> (count (:namespaces report)) 1) (println))
       (println (format "%d tests of %d success%s" success (+ success failed)
                        (if (zero? time) "" (format " in %s" (time-string time)))))
-      (seq (map :name (mapcat :failures results))))))
+      (seq (map :unit (mapcat :failures results))))))
 
 (defn test-listener []
   (reify Listener

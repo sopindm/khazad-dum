@@ -66,9 +66,9 @@
 (deftest default-listener-global-failures-reporting
   (with-default-listener listener
     (let [ns1 {:name "ns1" :units [{} {}
-                                   {:name "t1" :messages [{} {} {:name "f1" :type :failure} {}]} 
+                                   {:name "t1" :unit "t1" :messages [{} {} {:name "f1" :type :failure} {}]} 
                                    {}
-                                   {:name "t2" :messages [{} {:name "f2" :type :failure} {} {} {}
+                                   {:name "t2" :unit "t2" :messages [{} {:name "f2" :type :failure} {} {} {}
                                                           {:name "f3" :type :failure}]}]}
           ns2 {:name "success namespace" :units [{} {} {}]}]
       (?= (with-out-str (?= (l/report-run listener {:namespaces [ns1 ns2]})

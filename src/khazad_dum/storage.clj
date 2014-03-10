@@ -68,7 +68,8 @@
                                            :exception e
                                            :unit name})
                         nil))
-        report {:name name
+        report {:name (or (-> name meta :name) name)
+                :unit name
                 :type (-> name meta :unit-type)}]
     (l/report-unit (if run-time (assoc report :time run-time)
                        report))))

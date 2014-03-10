@@ -147,7 +147,7 @@
       (?true (match (with-identity-listener (s/run-unit var))
                     {:type report
                      :namespaces [{:name ns :units
-                                   [{:name var :type nil
+                                   [{:name 'var :type nil :unit var
                                      :messages [{:name "test"}]
                                      :time _}]}]} true
                     :else false)))))
@@ -171,11 +171,11 @@
       (?true (match (with-identity-listener (s/run-units namespace))
                     {:type :report
                      :namespaces [{:name namespace :units
-                                   [{:name var1 :type nil :time _
+                                   [{:name 'var1 :unit var1 :type nil :time _
                                      :messages [{:name "m1"}]}
-                                    {:name var2 :type nil :time _
+                                    {:name 'var2 :unit var2 :type nil :time _
                                      :messages [{:name "m2"}]}
-                                    {:name var3 :type nil :time _
+                                    {:name 'var3 :unit var3 :type nil :time _
                                      :messages [{:name "m3"}]}]}]} true
                     :else false)))))
 
@@ -190,10 +190,10 @@
       (?true (match (with-identity-listener (s/run-units ns1 ns2))
                     {:type :report
                      :namespaces [{:name ns1 :units
-                                   [{:name var1 :type nil :time _
+                                   [{:name 'var1 :unit var1 :type nil :time _
                                      :messages [{:name "m1"}]}]}
                                   {:name ns2 :units
-                                   [{:name var2 :type nil :time _
+                                   [{:name 'var2 :unit var2 :type nil :time _
                                      :messages [{:name "m2"}]}]}]} true
                     :else false)))))
 

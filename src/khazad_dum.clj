@@ -103,7 +103,7 @@
                                (#'lines-diff v1# v2#)
                                (#'lines-diff v2# v1#))))))
 
-(defmacro ?throws 
+(defmacro ?throws
   ([form exception] `(?throws ~form ~exception nil))
   ([form exception message & args]
      (let [exc-sym (gensym "exc")]
